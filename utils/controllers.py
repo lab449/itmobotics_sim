@@ -123,29 +123,24 @@ class JointTorquesController(RobotController):
 
 
 class CartPositionToCartVelocityController(RobotController):
-    def __init__(self, robot, ref_basis: str = 'base'):
-        super().__init__(robot, 'twist')
-        self.__ref_basis = ref_basis            
+    def __init__(self, robot):
+        super().__init__(robot, 'twist')       
         self.__pid =  MPIDController(10*np.identity(6), 1e-4*np.identity(6), 1e-1*np.identity(6), 1e-3)
 
     def calc_control(self, target_motion: Motion)-> bool:
         assert isinstance(target_motion, Motion), "Invalid type of target state, expected {:s}, but given {:s}". format(str(Motion), str(type(target_motion)))
-        
-        basis_frame = self.robot.ee_state(self.__ref_basis)
-        control_basis = basis_frame.tf.R
-        control_move_block = scipy.linalg.block_diag(control_basis, np.identity(3))
         
         current_state = self.robot.ee_state(target_motion.ee_state.ee_link)
 
         target_tf = target_motion.ee_state.tf
         current_tf = current_state.tf
 
-        pose_err =  target_tf.t - control_basis.T @ current_tf.t
+        pose_err =  target_tf.t -  current_tf.t
         orient_error =  target_tf.R @ current_tf.R.T
         twist_err =  (SE3(*pose_err.tolist()) @ SE3(SO3(orient_error, check=False))).twist().A
         target_twist = self.__pid.u(twist_err)
         
-        target_motion.ee_state.twist = control_move_block @ target_twist
+        target_motion.ee_state.twist = target_twist
         return True
 
 class CartForceHybrideToCartVelocityController(RobotController):
