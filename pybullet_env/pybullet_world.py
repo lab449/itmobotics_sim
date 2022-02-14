@@ -61,6 +61,9 @@ class PyBulletWorld():
         p.stepSimulation()
         self.__sim_time = time.time()-self.__start_sim_time
         time.sleep(self.__time_step)
+    
+    def reset(self):
+        self.__start_sim_time = time.time()
 
     @property
     def sim_time(self) -> float:

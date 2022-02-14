@@ -50,7 +50,7 @@ class PyBulletRobot(robot.Robot):
         Jv = np.zeros((3, len(joint_pose)))
         Jw = np.zeros((3, len(joint_pose)))
 
-        if not ee_link is 'world':
+        if ee_link!='world':
             jac_t, jac_r = p.calculateJacobian(
                 self.__robot_id, self.__link_id[ee_link], [0,0,0],
                 list(joint_pose), list(np.zeros(joint_pose.shape)),
@@ -59,8 +59,8 @@ class PyBulletRobot(robot.Robot):
             Jv = np.asarray(jac_t)
             Jw = np.asarray(jac_r)
                 
-        if not ref_frame is 'world':
-            print("World")
+        if ref_frame!='world':
+            # print("World")
             refFrameState = p.getLinkState(self.__robot_id, self.__link_id[ref_frame])
             _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
             rot_matrix =  SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False)
@@ -109,7 +109,7 @@ class PyBulletRobot(robot.Robot):
         )
     
     def _update_cartesian_state(self, tool_state: robot.EEState):
-        if not tool_state.ee_link is 'world':
+        if tool_state.ee_link!='world':
             eeState = p.getLinkState(self.__robot_id, self.__link_id[tool_state.ee_link])
             _,_,_,_, link_frame_pos, link_frame_rot = eeState
         else:
@@ -118,7 +118,7 @@ class PyBulletRobot(robot.Robot):
 
         tool_state.tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
 
-        if not tool_state.ref_frame is 'world':
+        if tool_state.ref_frame !='world':
             refFrameState = p.getLinkState(self.__robot_id, self.__link_id[tool_state.ref_frame])
             _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
             tool_state.tf = (SE3(*ref_frame_pos) @ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))).inv() @ tool_state.tf 

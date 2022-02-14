@@ -114,6 +114,13 @@ class CartVelocityToJointVelocityController(RobotController):
         ) @ target_motion.ee_state.twist
         return True
 
+class JointTorquesController(RobotController):
+    def __init__(self, robot: Robot):
+        super().__init__(robot, 'joint_torques')
+    
+    def calc_control(self, target_motion: Motion)-> bool:
+        return True
+
 
 class CartPositionToCartVelocityController(RobotController):
     def __init__(self, robot, ref_basis: str = 'base'):
