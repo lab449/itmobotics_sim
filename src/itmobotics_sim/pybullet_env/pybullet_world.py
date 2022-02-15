@@ -3,10 +3,7 @@ import pybullet_data
 import pybullet_utils.bullet_client as bc
 import numpy as np
 import time
-import platform
-import pybullet_robot
 import enum
-import pkgutil
 from spatialmath import SE3
 from scipy.spatial.transform import Rotation as R
 

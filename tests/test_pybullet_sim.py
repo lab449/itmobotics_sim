@@ -4,15 +4,14 @@ import numpy as np
 import copy
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.robot import EEState, JointState, Motion
-from pybullet_world import PyBulletWorld, GUI_MODE
-from pybullet_robot import PyBulletRobot
+from itmobotics_sim.utils.robot import EEState, JointState, Motion
+from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
+from itmobotics_sim.pybullet_robot import PyBulletRobot
 import unittest
 from spatialmath import SE3
 from spatialmath import base as sb
-from utils.controllers import CartPositionToCartVelocityController, CartVelocityToJointVelocityController, JointTorquesController
+from itmobotics_sim.utils.controllers import CartPositionToCartVelocityController, CartVelocityToJointVelocityController, JointTorquesController
 
 target_tf = SE3(0.3, 0.0, 1.0) @ SE3.Rx(np.pi)
 target_tf2 = SE3(0.3, 0.0, 1.0) @ SE3.Rx(np.pi)

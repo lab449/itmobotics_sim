@@ -7,8 +7,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from utils.robot import EEState, JointState, Motion
-from pybullet_world import PyBulletWorld, GUI_MODE
-from pybullet_robot import PyBulletRobot
+from pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
+from pybullet_env.pybullet_robot import PyBulletRobot
 import unittest
 from spatialmath import SE3
 from spatialmath import base as sb
