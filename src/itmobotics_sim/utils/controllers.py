@@ -80,7 +80,6 @@ class MPIDController(VectorController):
 
 class RobotController(ABC):
     def __init__(self, rob: Robot, robot_controller_type: str):
-        assert isinstance(rob, Robot), "Given unsupported type: {:s}, but expected {:s} like type".format(str(type(rob)), str(Robot))
         self.robot = rob
         self.__robot_controller_type = robot_controller_type
         self.__child_controller = None

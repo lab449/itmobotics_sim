@@ -3,15 +3,14 @@ import sys
 import numpy as np
 import copy
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from itmobotics_sim.utils.robot import EEState, JointState, Motion
 from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
-from itmobotics_sim.pybullet_robot import PyBulletRobot
+from itmobotics_sim.pybullet_env.pybullet_robot import PyBulletRobot
 import unittest
 from spatialmath import SE3
 from spatialmath import base as sb
 from itmobotics_sim.utils.controllers import CartPositionToCartVelocityController, CartVelocityToJointVelocityController, JointTorquesController
+
 
 target_tf = SE3(0.3, 0.0, 1.0) @ SE3.Rx(np.pi)
 target_tf2 = SE3(0.3, 0.0, 1.0) @ SE3.Rx(np.pi)
@@ -34,7 +33,7 @@ class testPyBulletRobot(unittest.TestCase):
         self.__robot.apply_force_sensor('ee_tool')
         # self.__robot.set_jointcontrol(init_joint_state,'joint_positions')
         self.__controller_speed = CartVelocityToJointVelocityController(self.__robot)
-        self.__controller_pose = CartPositionToCartVelocityController(self.__robot, 'world')
+        self.__controller_pose = CartPositionToCartVelocityController(self.__robot)
         self.__controller_pose.connect_controller(self.__controller_speed)
         self.__controller_torque = JointTorquesController(self.__robot)
 
