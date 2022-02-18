@@ -1,9 +1,12 @@
 from json import tool
 import sys, os
 import pybullet as p
+from pybullet_utils import bullet_client as bc
+from pybullet_utils import urdfEditor as ed
 import pybullet_data
 import numpy as np
 import time
+import copy
 from scipy.spatial.transform import Rotation as R
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -45,6 +48,40 @@ class PyBulletRobot(robot.Robot):
             'kd': np.ones(self.__num_actuators),
             'max_torque': 100*np.ones(self.__num_actuators)
         }
+        self.__external_models = {}
+    
+    def add_external_model(self, external_urdf_filename: str, parent_link: str, child_link: str):
+        last_state = copy.deepcopy(self._joint_state)
+
+        p0 = bc.BulletClient(connection_mode=p.DIRECT)
+        p0.setAdditionalSearchPath(pybullet_data.getDataPath())
+
+        p1 = bc.BulletClient(connection_mode=p.DIRECT)
+        p1.setAdditionalSearchPath(pybullet_data.getDataPath())
+
+        robot = p1.loadURDF(self._urdf_filename, flags=p0.URDF_USE_IMPLICIT_CYLINDER)
+        ext_model = p0.loadURDF(external_urdf_filename)
+
+
+        ed0 = ed.UrdfEditor()
+        ed0.initializeFromBulletBody(robot, p1._client)
+        ed1 = ed.UrdfEditor()
+        ed1.initializeFromBulletBody(ext_model, p0._client)
+
+        jointPivotXYZInParent = [0, 0, 0]
+        jointPivotRPYInParent = [0, 0, 0]
+        jointPivotXYZInChild = [0, 0, 0]
+        jointPivotRPYInChild = [0, 0, 0]
+
+        newjoint = ed0.joinUrdf(ed1, self.__link_id[parent_link], jointPivotXYZInParent, jointPivotRPYInParent,
+                                jointPivotXYZInChild, jointPivotRPYInChild, p0._client, p1._client)
+        newjoint.joint_type = p0.JOINT_FIXED
+        new_name = self._urdf_filename.split('.urdf')[0] + '_' + external_urdf_filename
+        ed0.saveUrdf(self._urdf_filename.split('.urdf')[0] + '_' + external_urdf_filename)
+        self._urdf_filename = new_name
+
+        ed0.createMultiBody(self.__base_pose, self.__base_orient)
+
 
     def jacobian(self, joint_pose: np.ndarray, ee_link: str, ref_frame: str) -> np.ndarray:
         Jv = np.zeros((3, len(joint_pose)))

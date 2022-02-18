@@ -35,7 +35,7 @@ class PyBulletWorld():
         self.__world_model = p.loadURDF(self.__urdf_filename, useFixedBase=True)
         self.__sim_time = 0.0
         self.__start_sim_time = time.time()
-        self.__objects = {}
+        self.__objects = {"init_model": self.__world_model}
     
     def add_object(self, name:str, urdf_filename: str, base_transform: SE3 = SE3(), fixed=True):
         if name in self.__objects.keys():
@@ -48,18 +48,23 @@ class PyBulletWorld():
             urdf_filename,
             basePosition=base_pose,
             baseOrientation=base_orient,
-            useFixedBase=True
+            useFixedBase=fixed
         )
         self.__objects[name] = obj_id
-        
     
+    def remove_object(self, name:str):
+        assert name in self.__objects, "Undefined object: {:s}".format(name)
+        p.removeBody(self.__objects[name])
+        del self.__objects[name]
+
     def sim_step(self):
-        inloptime = time.time()-self.__start_sim_time
         p.stepSimulation()
         self.__sim_time = time.time()-self.__start_sim_time
         time.sleep(self.__time_step)
     
+    
     def reset(self):
+        p.resetSimulation()
         self.__start_sim_time = time.time()
 
     @property
