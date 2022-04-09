@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name='itmobotics_sim',
-    version='0.0.1',
+    version='0.0.2',
     author='TexnoMann',
     author_email='texnoman@itmo.ru',
     description='Package with pybullet robots simulation',
@@ -21,7 +21,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     license='MIT',
-    download_url = 'https://github.com/user/reponame/archive/v_01.tar.gz',
+    download_url = 'https://github.com/user/reponame/archive/v_02.tar.gz',
     include_package_data=True,
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),

@@ -13,9 +13,11 @@ src/itmobotics_sim.egg-info/top_level.txt
 src/itmobotics_sim/pybullet_env/__init__.py
 src/itmobotics_sim/pybullet_env/pybullet_robot.py
 src/itmobotics_sim/pybullet_env/pybullet_world.py
+src/itmobotics_sim/pybullet_env/urdf_editor.py
 src/itmobotics_sim/utils/__init__.py
 src/itmobotics_sim/utils/controllers.py
 src/itmobotics_sim/utils/robot.py
+urdf/hole_round.urdf
 urdf/table.urdf
 urdf/table2.urdf
 urdf/ur5e_pybullet.urdf

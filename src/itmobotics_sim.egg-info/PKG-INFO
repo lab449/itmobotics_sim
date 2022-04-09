@@ -1,16 +1,27 @@
 Metadata-Version: 2.1
 Name: itmobotics-sim
-Version: 0.0.1
+Version: 0.0.2
 Summary: Package with pybullet robots simulation
 Home-page: https://github.com/ITMORobotics/itmobotics_sim
 Author: TexnoMann
 Author-email: texnoman@itmo.ru
 License: MIT
-Download-URL: https://github.com/user/reponame/archive/v_01.tar.gz
+Download-URL: https://github.com/user/reponame/archive/v_02.tar.gz
 Project-URL: Bug Tracker, https://github.com/ITMORobotics/itmobotics_sim/issues
 Description: # pybullet_sim
         Package contain simulation with robot in PyBullet.
         
+        ## Installation
+        For installing package run standart setup.py file:
+        ```bash
+            python3 setup.py sdist
+            python3 setup.py install
+        ```
+        
+        Installation completed if pip saw your package:
+         ```bash
+            pip3 show itmobotics-sim
+        ```
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
