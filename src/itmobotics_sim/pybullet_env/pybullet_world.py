@@ -45,7 +45,7 @@ class PyBulletWorld():
     def __append_object(self, name:str, urdf_filename: str, base_transform: SE3, fixed: bool, save: bool):
         base_pose = base_transform.t.tolist() # World position [x,y,z]
         base_orient = R.from_matrix(base_transform.R).as_quat().tolist() # Quaternioun [x,y,z,w]
-        print("Load %s, in %s", name, base_pose)
+        # print("Load %s, in %s", name, base_pose)
         obj_id = p.loadURDF(
             urdf_filename,
             basePosition=base_pose,

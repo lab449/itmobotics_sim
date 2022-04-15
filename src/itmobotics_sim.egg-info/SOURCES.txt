@@ -17,7 +17,14 @@ src/itmobotics_sim/pybullet_env/urdf_editor.py
 src/itmobotics_sim/utils/__init__.py
 src/itmobotics_sim/utils/controllers.py
 src/itmobotics_sim/utils/robot.py
-urdf/hole_round.urdf
+urdf/02358c79-c42b-4072-9987-1df910f92789.urdf
+urdf/18a02461-5d5e-485f-bd93-5db851c3b2e9.urdf
+urdf/58fa9b6a-395f-426e-9744-74504fa48a2f.urdf
+urdf/8aabce79-4aaa-49cb-a7b8-8ebb08dabe53.urdf
+urdf/b3057308-91f8-4d88-b269-63fda72b2ca1.urdf
+urdf/d95aca73-fbee-41f1-aab5-fb23f683b224.urdf
+urdf/ff10e093-8ed8-4a29-b008-a9d5c5f8ad38.urdf
+urdf/peg_round.urdf
 urdf/table.urdf
 urdf/table2.urdf
 urdf/ur5e_pybullet.urdf

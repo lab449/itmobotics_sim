@@ -17,19 +17,25 @@ from spatialmath import SE3,SO3
 class PyBulletRobot(robot.Robot):
     def __init__(self, urdf_filename: str, base_transform: SE3 = SE3()):
         super().__init__(urdf_filename, base_transform)
+        self.__base_urdf_filename = urdf_filename
         self.__robot_id = None
         self.__initialize = False
         self.__actuators_name_list = []
         self.__actuators_id_list = []
         self.__num_actuators = 0
+
+        self.__external_models = {}
+        self.__tool_list = []
+
         self.reset()
-        self.__external_models = False
 
     def __del__(self):
-        if self.__external_models:
-            os.remove(self._urdf_filename)
+        print(self.__external_models)
+        for m in self.__external_models.keys():
+            if os.path.exists(self.__external_models[m]["urdf_filename"]):
+                os.remove(self.__external_models[m]["urdf_filename"])
     
-    def connect_tool(self, external_urdf_filename: str, root_link: str, tf: SE3 = SE3()):
+    def connect_tool(self, tool_name: str, external_urdf_filename: str, root_link: str, tf: SE3 = SE3(), save = False):
         
         main_editor = URDFEditor(self._urdf_filename)
         child_editor = URDFEditor(external_urdf_filename)
@@ -41,14 +47,34 @@ class PyBulletRobot(robot.Robot):
         newpath = os.path.join(head, newname)
         self._urdf_filename = newpath
         main_editor.save(self._urdf_filename)
+        self.__external_models[tool_name] = {"urdf_filename": self._urdf_filename, "root_link": root_link, "tf": tf, "save": save}
+        self.__tool_list.append(tool_name)
 
-        self._update_joint_state(self._joint_state)
-        # print(self.joint_state)
+        jj = robot.JointState(self.__num_actuators)
+        self._update_joint_state(jj)
 
         self.remove_robot_body()
         self.reset()
-        # self.reset_joint_state(self._joint_state)
-        self.__external_models = True
+        self.reset_joint_state(jj)
+    
+    def remove_tool(self, tool_name):
+        for i in range(len(self.__tool_list)-1, -1, -1):
+            last_tool = self.__tool_list[i]
+            # del self.__external_models[last_tool]
+            self.__tool_list = self.__tool_list[:i]
+            if last_tool == tool_name:
+                break
+        if len(self.__tool_list)==0:
+            self._urdf_filename = self.__base_urdf_filename
+        else:
+            self._urdf_filename = self.__external_models[self.__tool_list[-1]]["urdf_filename"]
+
+        jj = robot.JointState(self.__num_actuators)
+        self._update_joint_state(jj)
+
+        self.remove_robot_body()
+        self.reset()
+        self.reset_joint_state(jj)
     
     def reset_joint_state(self, jstate: robot.JointState):
         self._joint_state = jstate
@@ -91,7 +117,6 @@ class PyBulletRobot(robot.Robot):
         raise RuntimeError('Robot does not support this type of control')
 
     def _send_jointcontrol_velocity(self, velocity: np.ndarray):
-        # print(velocity)
         p.setJointMotorControlArray(self.__robot_id,
             self.__actuators_id_list,
             p.VELOCITY_CONTROL,
@@ -155,6 +180,18 @@ class PyBulletRobot(robot.Robot):
         self.__initialize = False
 
     def reset(self):
+        for i in range(0, len(self.__tool_list)):
+            t = self.__tool_list[i]
+            if not self.__external_models[t]["save"]:
+                # for k in self.__tool_list[i:]:
+                #     self.__external_models.pop(k, None)
+                self.__tool_list = self.__tool_list[:i]
+                if len(self.__tool_list)==0:
+                    self._urdf_filename = self.__base_urdf_filename
+                else:
+                    self._urdf_filename = self.__external_models[self.__tool_list[-1]]["urdf_filename"]
+                break
+
         self.__base_pose = self._base_transform.t.tolist() # World position [x,y,z]
         self.__base_orient = R.from_matrix(self._base_transform.R).as_quat().tolist() # Quaternioun [x,y,z,w]
         # print("Loading urdf ", self._urdf_filename)
