@@ -80,6 +80,23 @@ class PyBulletRobot(robot.Robot):
         self._joint_state = jstate
         for i in range(self.__num_actuators):
             p.resetJointState(self.__robot_id, self.__actuators_id_list[i], self._joint_state.joint_positions[i], self._joint_state.joint_velocities[i])
+    
+    def reset_ee_state(self, eestate: robot.EEState):
+        ref_frame = eestate.ref_frame
+        base_ee_state = copy.deepcopy(eestate)
+        if ref_frame!='world':
+            refFrameState = p.getLinkState(self.__robot_id, self.__link_id[ref_frame])
+            _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
+            in_base_tf =  SE3(*ref_frame_pos)@ SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False)
+            base_ee_state = in_base_tf@base_ee_state
+
+        position = list(base_ee_state.tf.t)
+        orientation = p.getQuaternionFromEuler(list(base_ee_state.tf.eul()))
+        joint_poses = np.array(list(p.calculateInverseKinematics(self.__robot_id, self.__link_id[eestate.ee_link], position, orientation)) )
+        joint_speed = np.linalg.pinv(self.jacobian(joint_poses, eestate.ee_link, eestate.ref_frame)) @ base_ee_state.twist
+
+        for i in range(self.__num_actuators):
+            p.resetJointState(self.__robot_id, self.__actuators_id_list[i], joint_poses[i], joint_speed[i])
 
 
     def jacobian(self, joint_pose: np.ndarray, ee_link: str, ref_frame: str) -> np.ndarray:
@@ -233,6 +250,11 @@ class PyBulletRobot(robot.Robot):
     @property
     def joint_controller_params(self) -> dict:
         return self.__joint_controller_params
+
+    @property
+    def robot_id(self) -> int:
+        return self.__robot_id
+    
     
     @joint_controller_params.setter
     def joint_controller_params(self, controller_params: dict):

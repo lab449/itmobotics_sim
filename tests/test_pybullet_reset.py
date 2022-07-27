@@ -67,6 +67,7 @@ class testPyBulletRobot(unittest.TestCase):
         jstate = self.__robot.joint_state
         self.__reset()
         self.__robot.reset_joint_state(jstate)
+        self.__robot2.reset_ee_state(target_motion2.ee_state)
         while self.__sim.sim_time<10.0:
             self.__controller_pose.send_control_to_robot(target_motion)
             self.__controller_pose2.send_control_to_robot(target_motion2)

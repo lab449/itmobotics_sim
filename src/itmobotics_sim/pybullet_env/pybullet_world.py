@@ -52,12 +52,24 @@ class PyBulletWorld():
             baseOrientation=base_orient,
             useFixedBase=fixed
         )
-        self.__objects[name] = {"id": obj_id, "urdf_filename": urdf_filename, "base_tf": base_transform, "fixed": fixed, "save": save}
+        num_joints = p.getNumJoints(obj_id)
+        link_id = {}
+        for _id in range(num_joints):
+            _name = p.getJointInfo(obj_id, _id)[12].decode('UTF-8')
+            link_id[_name] = _id
+        
+        self.__objects[name] = {"id": obj_id, "urdf_filename": urdf_filename, "base_tf": base_transform, "fixed": fixed, "save": save, "link_id": link_id}
     
-    def remove_object(self, name:str):
+    def remove_object(self, name: str):
         assert name in self.__objects, "Undefined object: {:s}".format(name)
         p.removeBody(self.__objects[name]["id"])
         del self.__objects[name]
+
+    def link_tf(self, object_name: str, link:str) -> SE3:
+        pr = p.getLinkState(self.__objects[object_name]["id"], self.__objects[object_name]["link_id"][link])
+        _,_,_,_, link_frame_pos, link_frame_rot = pr
+        tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
+        return tf
 
     def sim_step(self):
         p.stepSimulation()
