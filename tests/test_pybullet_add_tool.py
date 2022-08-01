@@ -36,6 +36,9 @@ class testPyBulletRobot(unittest.TestCase):
         self.__robot = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0, -0.3, 0.625))
         self.__robot2 = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0.0, 0.3, 0.625))
 
+        self.__sim.add_robot(self.__robot, 'robot1')
+        self.__sim.add_robot(self.__robot2, 'robot2')
+
         self.__robot.apply_force_sensor('ee_tool')
 
         self.__controller_speed = CartVelocityToJointVelocityController(self.__robot)
@@ -58,21 +61,24 @@ class testPyBulletRobot(unittest.TestCase):
         self.__robot.connect_tool('peg' ,'urdf/peg_round.urdf', root_link='ee_tool', tf=SE3(0.0, 0.0, 0.1))
 
         while self.__sim.sim_time<15.0:
-            self.__controller_pose.send_control_to_robot(target_motion)
-            self.__controller_pose2.send_control_to_robot(target_motion2)
+            ok = self.__controller_pose.send_control_to_robot(target_motion)
+            ok &= self.__controller_pose2.send_control_to_robot(target_motion2)
+            self.assertTrue(ok)
             self.__sim.sim_step()
         
         self.__robot.remove_tool('peg')
         self.__robot.connect_tool('peg' ,'urdf/peg_round.urdf', root_link='ee_tool', tf=SE3(0.0, 0.0, 0.1), save=True)
         while self.__sim.sim_time<30.0:
-            self.__controller_pose.send_control_to_robot(target_motion)
-            self.__controller_pose2.send_control_to_robot(target_motion2)
+            ok = self.__controller_pose.send_control_to_robot(target_motion)
+            ok &= self.__controller_pose2.send_control_to_robot(target_motion2)
+            self.assertTrue(ok)
             self.__sim.sim_step()
 
         self.__reset()
         while self.__sim.sim_time<60.0:
-            self.__controller_pose.send_control_to_robot(target_motion)
-            self.__controller_pose2.send_control_to_robot(target_motion2)
+            ok = self.__controller_pose.send_control_to_robot(target_motion)
+            ok &= self.__controller_pose2.send_control_to_robot(target_motion2)
+            self.assertTrue(ok)
             self.__sim.sim_step()
                 
 def main():

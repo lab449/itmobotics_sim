@@ -35,6 +35,8 @@ class testPyBulletRobot(unittest.TestCase):
         self.__sim.add_object('table', 'urdf/table.urdf', fixed =True, save=True)
         self.__robot = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0,-0.3,0.625))
         self.__robot2 = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0.0,0.3,0.625))
+        self.__sim.add_robot(self.__robot, 'robot1')
+        self.__sim.add_robot(self.__robot2, 'robot2')
 
         self.__robot.apply_force_sensor('ee_tool')
         self.__robot2.apply_force_sensor('ee_tool')
@@ -58,19 +60,32 @@ class testPyBulletRobot(unittest.TestCase):
     def test_reset(self):
         self.__robot.ee_state('ee_tool')
         self.__reset()
+        self.assertNotEqual(self.__robot.robot_id, self.__robot2.robot_id)
+        self.assertIsNotNone(self.__robot.robot_id)
+        self.assertIsNotNone(self.__robot2.robot_id)
         while self.__sim.sim_time<10.0:
-
-            self.__controller_pose.send_control_to_robot(target_motion)
-            self.__controller_pose2.send_control_to_robot(target_motion2)
+            ok = self.__controller_pose.send_control_to_robot(target_motion)
+            ok &= self.__controller_pose2.send_control_to_robot(target_motion2)
+            self.assertTrue(ok)
             self.__sim.sim_step()
 
         jstate = self.__robot.joint_state
         self.__reset()
+        self.assertNotEqual(self.__robot.robot_id, self.__robot2.robot_id)
+        self.assertIsNotNone(self.__robot.robot_id)
+        self.assertIsNotNone(self.__robot2.robot_id)
         self.__robot.reset_joint_state(jstate)
+        result = self.__robot.joint_state
+        self.assertEqual(jstate, result)
+        
         self.__robot2.reset_ee_state(target_motion2.ee_state)
+        result = self.__robot2.ee_state(target_motion2.ee_state.ee_link)
+        self.assertEqual(target_motion2.ee_state, result)
+
         while self.__sim.sim_time<10.0:
-            self.__controller_pose.send_control_to_robot(target_motion)
-            self.__controller_pose2.send_control_to_robot(target_motion2)
+            ok = self.__controller_pose.send_control_to_robot(target_motion)
+            ok &= self.__controller_pose2.send_control_to_robot(target_motion2)
+            self.assertTrue(ok)
             self.__sim.sim_step()
                 
 def main():

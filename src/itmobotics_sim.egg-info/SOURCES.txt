@@ -17,8 +17,6 @@ src/itmobotics_sim/pybullet_env/urdf_editor.py
 src/itmobotics_sim/utils/__init__.py
 src/itmobotics_sim/utils/controllers.py
 src/itmobotics_sim/utils/robot.py
-urdf/hole_round.urdf
-urdf/peg_round.urdf
-urdf/table.urdf
-urdf/table2.urdf
-urdf/ur5e_pybullet.urdf
+src/itmobotics_sim/utils/__pycache__/__init__.cpython-38.pyc
+src/itmobotics_sim/utils/__pycache__/controllers.cpython-38.pyc
+src/itmobotics_sim/utils/__pycache__/robot.cpython-38.pyc

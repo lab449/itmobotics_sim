@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import scipy
 from abc import ABC, abstractmethod
-from .robot import EEState, JointState, Robot, Motion
+from .robot import RobotControllerType, EEState, JointState, Robot, Motion
 from spatialmath import SE3, SO3
 
 import copy
@@ -78,13 +78,13 @@ class MPIDController(VectorController):
         assert D.shape[0] == self.__D.shape[0] and D.shape[1] == self.__D.shape[1],'Invalid input matrix size, expected {:d}x{:d}, but given {:d}x{:d}'.format(self.__D.shape[0], self.__D.shape[1], D.shape[0], D.shape[1])
         self.__D = D        
 
-class RobotController(ABC):
+class ExternalController(ABC):
     def __init__(self, rob: Robot, robot_controller_type: str):
         self.robot = rob
         self.__robot_controller_type = robot_controller_type
         self.__child_controller = None
 
-    def connect_controller(self, controller: RobotController):
+    def connect_controller(self, controller: ExternalController):
         self.__child_controller = controller
 
     @abstractmethod
@@ -100,10 +100,17 @@ class RobotController(ABC):
             return self.__child_controller.send_control_to_robot(target_motion)
         return self.robot.set_control(target_motion, self.__robot_controller_type)
 
+class SimpleController(ExternalController):
+    def __init__(self, rob: Robot, robot_controller_type: str):
+        super().__init__(rob, robot_controller_type)
+    
+    def calc_control(self, target_motion: Motion) -> bool:
+        return True
 
-class CartVelocityToJointVelocityController(RobotController):
+
+class CartVelocityToJointVelocityController(ExternalController):
     def __init__(self, robot: Robot):
-        super().__init__(robot, 'joint_velocities')
+        super().__init__(robot, RobotControllerType.JOINT_VELOCITIES)
     
     def calc_control(self, target_motion: Motion)-> bool:
         target_motion.joint_state.joint_velocities =  np.linalg.pinv(
@@ -113,17 +120,21 @@ class CartVelocityToJointVelocityController(RobotController):
         ) @ target_motion.ee_state.twist
         return True
 
-class JointTorquesController(RobotController):
+class JointTorquesController(SimpleController):
     def __init__(self, robot: Robot):
-        super().__init__(robot, 'joint_torques')
-    
-    def calc_control(self, target_motion: Motion)-> bool:
-        return True
+        super().__init__(robot, RobotControllerType.JOINT_TORQUES)
 
+class JointPositionsController(SimpleController):
+    def __init__(self, robot: Robot):
+        super().__init__(robot, RobotControllerType.JOINT_POSITIONS)
 
-class CartPositionToCartVelocityController(RobotController):
+class JointVelocitiesController(SimpleController):
+    def __init__(self, robot: Robot):
+        super().__init__(robot, RobotControllerType.JOINT_VELOCITIES)
+
+class CartPositionToCartVelocityController(ExternalController):
     def __init__(self, robot):
-        super().__init__(robot, 'twist')       
+        super().__init__(robot, RobotControllerType.TWIST)       
         self.__pid =  MPIDController(10*np.identity(6), 1e-4*np.identity(6), 1e-1*np.identity(6), 1e-3)
 
     def calc_control(self, target_motion: Motion)-> bool:
@@ -142,9 +153,9 @@ class CartPositionToCartVelocityController(RobotController):
         target_motion.ee_state.twist = target_twist
         return True
 
-class CartForceHybrideToCartVelocityController(RobotController):
+class CartForceHybrideToCartVelocityController(ExternalController):
     def __init__(self, robot: Robot, selected_axis: np.ndarray, stiffnes: np.ndarray, ref_basis: str = 'world'):
-        super().__init__(robot, 'twist')
+        super().__init__(robot, RobotControllerType.TWIST)
         self.__pid =  MPIDController(10*np.identity(6), 1e-4*np.identity(6), 1e-1*np.identity(6), 1e-3)
         self.__ref_basis = ref_basis
         self.__stiffnes = stiffnes

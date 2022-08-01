@@ -30,6 +30,7 @@ class testPyBulletRobot(unittest.TestCase):
         self.__sim = PyBulletWorld('plane.urdf',gui_mode = GUI_MODE.SIMPLE_GUI, time_step = 0.01, time_scale=10)
         self.__sim.add_object('table', 'urdf/table.urdf')
         self.__robot = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0,0,0.625))
+        self.__sim.add_robot(self.__robot, 'robot1')
         self.__robot.apply_force_sensor('ee_tool')
         # self.__robot.set_jointcontrol(init_joint_state,'joint_positions')
         self.__controller_speed = CartVelocityToJointVelocityController(self.__robot)
@@ -43,17 +44,20 @@ class testPyBulletRobot(unittest.TestCase):
             self.__sim.sim_step()
             # print(self.__robot.joint_state)
             if self.__sim.sim_time>3.0:
-                self.__controller_pose.send_control_to_robot(target_motion)
+                ok = self.__controller_pose.send_control_to_robot(target_motion)
+                self.assertTrue(ok)
         while self.__sim.sim_time<20.0:
             self.__sim.sim_step()
             # print(self.__robot.joint_state)
             if self.__sim.sim_time>13.0:
-                self.__controller_speed.send_control_to_robot(target_motion2)
+                ok = self.__controller_speed.send_control_to_robot(target_motion2)
+                self.assertTrue(ok)
         while self.__sim.sim_time<30.0:
             self.__sim.sim_step()
             # print(self.__robot.joint_state)
             if self.__sim.sim_time>23.0:
-                self.__controller_torque.send_control_to_robot(target_motion2)
+                ok = self.__controller_torque.send_control_to_robot(target_motion2)
+                self.assertTrue(ok)
     
 def main():
     unittest.main(exit=False)

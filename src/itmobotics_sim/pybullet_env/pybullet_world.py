@@ -4,7 +4,7 @@ import pybullet_utils.bullet_client as bc
 import numpy as np
 import time
 import enum
-from spatialmath import SE3
+from spatialmath import SE3, SO3
 from scipy.spatial.transform import Rotation as R
 from .pybullet_robot import PyBulletRobot
 
@@ -20,7 +20,7 @@ class PyBulletWorld():
         self.__time_scale = max(time_scale, 1.0)
         assert self.__time_scale < 1e3, "Large time scale doesn't support, please chose less than 1e3"
         assert self.__time_step < 1.0, "Large time step doesn't support, please chose less than 1.0 sec"
-        self.__robots = []
+        self.__robots = {}
 
         self.__pybullet_gui_mode = p.DIRECT
         
@@ -33,8 +33,12 @@ class PyBulletWorld():
         self.__objects = {}
         self.reset()
     
-    def add_robot(self, robot: PyBulletRobot):
-        self.__robots.append(robot)
+    def add_robot(self, robot: PyBulletRobot, name: str = 'robot') -> bool:
+        if name in self.__robots.keys():
+            return False
+        self.__robots[name] = robot
+        robot.reset()
+        return True
     
     def add_object(self, name:str, urdf_filename: str, base_transform: SE3 = SE3(), fixed=True, save=False):
         if name in self.__objects.keys():
@@ -78,8 +82,9 @@ class PyBulletWorld():
     
     
     def reset(self):
-        for r in self.__robots:
-            r.remove_robot_body()
+        for r in self.__robots.keys():
+            self.__robots[r].clear_id()
+
         p.resetSimulation()
         p.setGravity(0, 0, -9.82)
         p.setTimeStep(self.__time_step)
@@ -87,6 +92,10 @@ class PyBulletWorld():
         p.setRealTimeSimulation(False)
 
         self.__world_model = p.loadURDF(self.__urdf_filename, useFixedBase=True)
+        
+        for r in self.__robots.keys():
+            self.__robots[r].reset()
+
         self.__sim_time = 0.0
         self.__start_sim_time = time.time()
         for n in self.__objects:
@@ -94,7 +103,6 @@ class PyBulletWorld():
             if obj["save"]:
                 self.__append_object(n, obj["urdf_filename"], obj["base_tf"], obj["fixed"], obj["save"])
         
-        print(self.__objects)
 
     @property
     def sim_time(self) -> float:

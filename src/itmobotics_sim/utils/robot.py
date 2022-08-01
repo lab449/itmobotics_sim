@@ -1,17 +1,23 @@
 from __future__ import annotations
+from enum import Enum, auto
 
 import numpy as np
 from abc import ABC, abstractmethod
 from spatialmath import SE3, SO3
 
-
+class RobotControllerType(Enum):
+    JOINT_POSITIONS = 'joint_positions'
+    JOINT_VELOCITIES = 'joint_velocities'
+    JOINT_TORQUES = 'joint_torques'
+    TF = 'tf'
+    TWIST = 'twist'
 
 class JointState():
     def __init__(self, num_joints: int):
         self.__num_joints = num_joints
         self.__joint_positions: np.ndarray = None
         self.__joint_velocities: np.ndarray = None
-        self.__joint_torques: np.ndarray =  None
+        self.__joint_torques: np.ndarray =  np.zeros(num_joints)
 
     def __str__(self):
         out = 'Position: {:s},\nVelocity: {:s},\nTorque: {:s}'.format(
@@ -20,6 +26,9 @@ class JointState():
             str(np.round(self.__joint_torques.tolist(),decimals=4)),
             )
         return out
+
+    def __eq__(self, __js: JointState) -> bool:
+        return np.equal(__js.joint_positions, self.joint_positions).all() and np.equal(__js.joint_velocities, self.joint_velocities).all() and np.equal(__js.joint_torques, self.joint_torques).all()
     
     def from_position(jpose: np.ndarray) -> JointState:
         js = JointState(jpose.shape[0])
@@ -87,7 +96,10 @@ class EEState():
             str(np.round(self.__force_torque.tolist(),decimals=3)),
             )
         return out
-    
+
+    def __eq__(self, __es: EEState) -> bool:
+        return np.allclose(self.__tf.A, __es.tf.A, atol=1e-5) and np.allclose(self.__twist, __es.twist, atol=1e-5) 
+
     def copy(self) -> EEState:
         return 
 
@@ -188,31 +200,31 @@ class Robot(ABC):
         self._joint_state = JointState(6)
         self._force_sensor_link = None
         self.__controllers_types ={
-            'joint_positions': self._send_jointcontrol_position,
-            'joint_velocities': self._send_jointcontrol_velocity,
-            'joint_torques': self._send_jointcontrol_torque,
-            'tf': self._send_cartcontrol_position,
-            'twist': self._send_cartcontrol_velocity
+            RobotControllerType.JOINT_POSITIONS.value: self._send_jointcontrol_position,
+            RobotControllerType.JOINT_VELOCITIES.value: self._send_jointcontrol_velocity,
+            RobotControllerType.JOINT_TORQUES.value: self._send_jointcontrol_torque,
+            RobotControllerType.TF.value: self._send_cartcontrol_position,
+            RobotControllerType.TWIST.value: self._send_cartcontrol_velocity
         }
 
     @abstractmethod
-    def _send_jointcontrol_position(self, position: np.ndarray):
+    def _send_jointcontrol_position(self, position: np.ndarray) -> bool:
         pass
 
     @abstractmethod
-    def _send_jointcontrol_velocity(self, velocity: np.ndarray):
+    def _send_jointcontrol_velocity(self, velocity: np.ndarray) -> bool:
         pass
 
     @abstractmethod
-    def _send_cartcontrol_position(self, tf: SE3()):
+    def _send_cartcontrol_position(self, tf: SE3()) -> bool:
         pass
 
     @abstractmethod
-    def _send_cartcontrol_velocity(self, velocity: np.ndarray):
+    def _send_cartcontrol_velocity(self, velocity: np.ndarray) -> bool:
         pass
 
     @abstractmethod
-    def _send_jointcontrol_torque(self, torque: np.ndarray):
+    def _send_jointcontrol_torque(self, torque: np.ndarray) -> bool:
         pass
 
     @abstractmethod
@@ -244,24 +256,27 @@ class Robot(ABC):
         self._update_joint_state(self._joint_state)
         return self._joint_state
     
+    @property
+    def num_joints(self) -> JointState:
+        return self._joint_state.num_joints
+
     def ee_state(self, ee_link: str, ref_frame: str = 'world') -> EEState:
         tool_state = EEState(ee_link, ref_frame)
         self._update_joint_state(self._joint_state)
         self._update_cartesian_state(tool_state)
         return tool_state
 
-    def set_control(self, target_motion: Motion, type_ctrl: str) -> bool:
-        assert type_ctrl in self.__controllers_types, "Unknown joint controller type: {:s} ".format(type_ctrl)
+    def set_control(self, target_motion: Motion, type_ctrl: RobotControllerType) -> bool:
+        assert type_ctrl.value in self.__controllers_types, "Unknown joint controller type: {:s} ".format(type_ctrl)
         target = None
         try:
-            target = getattr(target_motion.joint_state, type_ctrl)
+            target = getattr(target_motion.joint_state, type_ctrl.value)
         except AttributeError:
             try:
-                target = getattr(target_motion.ee_state, type_ctrl)
+                target = getattr(target_motion.ee_state, type_ctrl.value)
             except AttributeError:
                 pass
         if not target is None:
-            self.__controllers_types[type_ctrl](target)
-            return True
+            return self.__controllers_types[type_ctrl.value](target)
         return False
 

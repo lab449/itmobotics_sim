@@ -35,6 +35,9 @@ class testPyBulletRobot(unittest.TestCase):
         self.__robot = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0,-0.3,0.625))
         self.__robot2 = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0.0,0.3,0.625))
 
+        self.__sim.add_robot(self.__robot, 'robot1')
+        self.__sim.add_robot(self.__robot2, 'robot2')
+
         self.__robot.apply_force_sensor('ee_tool')
         self.__robot2.apply_force_sensor('ee_tool')
 
@@ -52,14 +55,16 @@ class testPyBulletRobot(unittest.TestCase):
             self.__sim.sim_step()
             # print(self.__robot.joint_state)
             if self.__sim.sim_time>10.0:
-                self.__controller_pose.send_control_to_robot(target_motion)
-                self.__controller_pose2.send_control_to_robot(target_motion2)
+                ok = self.__controller_pose.send_control_to_robot(target_motion)
+                ok &= self.__controller_pose2.send_control_to_robot(target_motion2)
+                self.assertTrue(ok)
         while self.__sim.sim_time<40.0:
             self.__sim.sim_step()
             # print(self.__robot.joint_state)
             if self.__sim.sim_time>30.0:
-                self.__controller_speed.send_control_to_robot(target_motion_s)
-                self.__controller_speed2.send_control_to_robot(target_motion2_s)
+                ok = self.__controller_speed.send_control_to_robot(target_motion_s)
+                ok &= self.__controller_speed2.send_control_to_robot(target_motion2_s)
+                self.assertTrue(ok)
                 
 def main():
     unittest.main(exit=False)
