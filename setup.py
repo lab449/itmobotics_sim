@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name='itmobotics_sim',
-    version='0.0.2',
+    version='0.0.3',
     author='TexnoMann',
     author_email='texnoman@itmo.ru',
     description='Package with pybullet robots simulation',
