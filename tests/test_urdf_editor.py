@@ -9,6 +9,7 @@ from spatialmath import base as sb
 
 from itmobotics_sim.pybullet_env.urdf_editor import URDFEditor
 
+
 class testUrdfEditor(unittest.TestCase):
     def setUp(self):
         self.__editor = URDFEditor('urdf/ur5e_pybullet.urdf')

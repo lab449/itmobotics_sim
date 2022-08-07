@@ -9,7 +9,7 @@ from itmobotics_sim.pybullet_env.pybullet_robot import PyBulletRobot
 import unittest
 from spatialmath import SE3
 from spatialmath import base as sb
-from itmobotics_sim.utils.controllers import CartPositionToCartVelocityController, CartVelocityToJointVelocityController, JointTorquesController
+from itmobotics_sim.utils.controllers import EEPositionToEEVelocityController, EEVelocityToJointVelocityController, JointTorquesController
 
 
 target_ee_state = EEState.from_tf( SE3(0.3, -0.5, 1.2) @ SE3.Rx(np.pi) , 'ee_tool')
@@ -38,16 +38,14 @@ class testPyBulletRobot(unittest.TestCase):
         self.__sim.add_robot(self.__robot, 'robot1')
         self.__sim.add_robot(self.__robot2, 'robot2')
 
-        self.__robot.apply_force_sensor('ee_tool')
-        self.__robot2.apply_force_sensor('ee_tool')
-
-        self.__controller_speed = CartVelocityToJointVelocityController(self.__robot)
-        self.__controller_pose = CartPositionToCartVelocityController(self.__robot)
+        self.__controller_speed = EEVelocityToJointVelocityController(self.__robot)
+        self.__controller_pose = EEPositionToEEVelocityController(self.__robot)
         self.__controller_pose.connect_controller(self.__controller_speed)
 
-        self.__controller_speed2 = CartVelocityToJointVelocityController(self.__robot2)
-        self.__controller_pose2 = CartPositionToCartVelocityController(self.__robot2)
+        self.__controller_speed2 = EEVelocityToJointVelocityController(self.__robot2)
+        self.__controller_pose2 = EEPositionToEEVelocityController(self.__robot2)
         self.__controller_pose2.connect_controller(self.__controller_speed2)
+
 
     def test_sim(self):
         self.__robot.ee_state('ee_tool')

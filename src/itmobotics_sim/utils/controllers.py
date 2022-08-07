@@ -108,7 +108,7 @@ class SimpleController(ExternalController):
         return True
 
 
-class CartVelocityToJointVelocityController(ExternalController):
+class EEVelocityToJointVelocityController(ExternalController):
     def __init__(self, robot: Robot):
         super().__init__(robot, RobotControllerType.JOINT_VELOCITIES)
     
@@ -132,7 +132,7 @@ class JointVelocitiesController(SimpleController):
     def __init__(self, robot: Robot):
         super().__init__(robot, RobotControllerType.JOINT_VELOCITIES)
 
-class CartPositionToCartVelocityController(ExternalController):
+class EEPositionToEEVelocityController(ExternalController):
     def __init__(self, robot):
         super().__init__(robot, RobotControllerType.TWIST)       
         self.__pid =  MPIDController(10*np.identity(6), 1e-4*np.identity(6), 1e-1*np.identity(6), 1e-3)
@@ -153,13 +153,13 @@ class CartPositionToCartVelocityController(ExternalController):
         target_motion.ee_state.twist = target_twist
         return True
 
-class CartForceHybrideToCartVelocityController(ExternalController):
+class EEForceHybrideToEEVelocityController(ExternalController):
     def __init__(self, robot: Robot, selected_axis: np.ndarray, stiffnes: np.ndarray, ref_basis: str = 'world'):
         super().__init__(robot, RobotControllerType.TWIST)
         self.__pid =  MPIDController(10*np.identity(6), 1e-4*np.identity(6), 1e-1*np.identity(6), 1e-3)
         self.__ref_basis = ref_basis
         self.__stiffnes = stiffnes
-        self.__T, self.__Y = CartForceHybrideToCartVelocityController.generate_square_selection_matrix(selected_axis)
+        self.__T, self.__Y = EEForceHybrideToEEVelocityController.generate_square_selection_matrix(selected_axis)
 
     def calc_control(self, target_motion: Motion)-> bool:
         assert isinstance(target_motion, Motion), "Invalid type of target state, expected {:s}, but given {:s}". format(str(Motion), str(type(target_motion)))

@@ -1,15 +1,103 @@
 from __future__ import annotations
+import functools
+import operator
+
 from enum import Enum, auto
+from typing import Tuple
 
 import numpy as np
 from abc import ABC, abstractmethod
 from spatialmath import SE3
+
 class RobotControllerType(Enum):
     JOINT_POSITIONS = 'joint_positions'
     JOINT_VELOCITIES = 'joint_velocities'
     JOINT_TORQUES = 'joint_torques'
     TF = 'tf'
     TWIST = 'twist'
+
+class JointLimits():
+    def __init__(self, limit_positions: Tuple[np.ndarray],  limit_velocities: Tuple[np.ndarray], limit_torques: Tuple[np.ndarray]):
+        assert limit_positions[0].shape[0]==limit_positions[1].shape[0], \
+            "Diffrent shapes of lower an upper limits: {:d} and {:d} respectively".format(
+            limit_positions[0].shape[0], limit_positions[1].shape[0]
+        )
+        self.__num_joints = limit_positions[0].shape[0]
+        self.limit_positions = limit_positions
+
+        if limit_velocities is None:
+            self.limit_velocities = self.__limit_positions
+        else:
+            self.limit_velocities = limit_velocities
+
+        if limit_torques is None:
+            self.limit_torques = (1000*np.zeros(self.__num_joints), 1000*np.zeros(self.__num_joints))
+        else:
+            self.limit_torques = limit_torques
+
+    def __str__(self):
+        output_list = functools.reduce(
+            operator.iconcat, [
+                self.__limit_positions,
+                self.__limit_velocities,
+                self.__limit_torques
+            ], []
+        )
+        out = ('Joint positions limits:\n   min: {:s}, max: {:s},\n'+
+                'Joint velocities limits:\n   min: {:s}, max: {:s},\n'+
+                'Joint torques limits: \n   min: {:s}, max: {:s}').format(
+                *[str(v) for v in output_list]
+                )
+        return out
+    
+    def clip_joint_state(self, joint_state: JointState):
+        np.clip(joint_state.joint_positions, self.__limit_positions[0], self.__limit_positions[1])
+        np.clip(joint_state.joint_velocities, self.__limit_velocities[0], self.__limit_velocities[1])
+        np.clip(joint_state.joint_torques, self.__limit_torques[0], self.__limit_torques[1])
+    
+    @property
+    def num_joints(self) -> int:
+        return self.__num_joints
+
+    @property
+    def limit_positions(self) -> np.ndarray:
+        return self.__limit_positions
+    
+    @property
+    def limit_velocities(self) -> np.ndarray:
+        return self.__limit_velocities
+    
+    @property
+    def limit_torques(self) -> np.ndarray:
+        return self.__limit_torques
+    
+    
+    @limit_positions.setter
+    def limit_positions(self, limit: Tuple[np.ndarray]):
+        assert limit[0].shape[0]==limit[1].shape[0], \
+            "Diffrent shapes of lower an upper limits: {:d} and {:d} respectively".format(
+            limit[0].shape[0], limit[1].shape[0]
+        )
+        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jpose.shape[0])
+        self.__limit_positions = limit
+
+    @limit_velocities.setter
+    def limit_velocities(self,  limit: Tuple[np.ndarray]):
+        assert limit[0].shape[0]==limit[1].shape[0], \
+            "Diffrent shapes of lower an upper limits: {:d} and {:d} respectively".format(
+            limit[0].shape[0], limit[1].shape[0]
+        )
+        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jpose.shape[0])
+        self.__limit_velocities = limit
+    
+    @limit_torques.setter
+    def limit_torques(self,  limit: Tuple[np.ndarray]):
+        assert limit[0].shape[0]==limit[1].shape[0], \
+            "Diffrent shapes of lower an upper limits: {:d} and {:d} respectively".format(
+            limit[0].shape[0], limit[1].shape[0]
+        )
+        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jpose.shape[0])
+        self.__limit_torques = limit
 
 class JointState():
     def __init__(self, num_joints: int):
@@ -64,19 +152,18 @@ class JointState():
     
     @joint_positions.setter
     def joint_positions(self, jpose: np.ndarray):
-        assert self.__num_joints == jpose.shape[0],'Invaliid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jpose.shape[0])
+        assert self.__num_joints == jpose.shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jpose.shape[0])
         self.__joint_positions = jpose
 
     @joint_velocities.setter
     def joint_velocities(self, jvel: np.ndarray):
-        assert self.__num_joints == jvel.shape[0],'Invaliid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jvel.shape[0])
+        assert self.__num_joints == jvel.shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jvel.shape[0])
         self.__joint_velocities = jvel
     
     @joint_torques.setter
     def joint_torques(self, jtorq: np.ndarray):
-        assert self.__num_joints == jtorq.shape[0],'Invaliid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jtorq.shape[0])
+        assert self.__num_joints == jtorq.shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jtorq.shape[0])
         self.__joint_torques = jtorq
-
 
 class EEState():
     def __init__(self, ee_link: str, ref_frame: str = 'world'):
@@ -102,20 +189,26 @@ class EEState():
     def copy(self) -> EEState:
         return 
 
-    def from_force_torque(force_torque: np.ndarray, ee_link:str) -> EEState:
-        es = EEState(ee_link)
+    def from_force_torque(force_torque: np.ndarray, ee_link:str, ref_link: str = 'world') -> EEState:
+        es = EEState(ee_link, ref_link)
         es.force_torque = force_torque
         return es
     
-    def from_twist(twist: np.ndarray, ee_link:str) -> EEState:
-        es = EEState(ee_link)
+    def from_twist(twist: np.ndarray, ee_link:str, ref_link: str = 'world') -> EEState:
+        es = EEState(ee_link, ref_link)
         es.twist = twist
         return es
     
-    def from_tf(tf: SE3, ee_link:str)-> EEState:
-        es = EEState(ee_link)
+    def from_tf(tf: SE3, ee_link:str, ref_link: str = 'world')-> EEState:
+        es = EEState(ee_link, ref_link)
         es.tf = tf
         return es
+    
+    def transform(self, tf: SE3):
+        self.tf = tf@self.tf
+        rotation_6d = np.kron(np.eye(2,dtype=int), tf.R)
+        self.twist = rotation_6d @ self.twist
+        self.force_torque =rotation_6d @ self.force_torque
 
     @property
     def ee_link(self) -> str:
@@ -144,7 +237,7 @@ class EEState():
 
     @twist.setter
     def twist(self, twist: np.ndarray):
-        assert twist.shape[0] == 6,'Invaliid input vector size, expected {:d}, but given {:d}'.format(6, twist.shape[0])
+        assert twist.shape[0] == 6,'Invalid input vector size, expected {:d}, but given {:d}'.format(6, twist.shape[0])
         self.__twist = twist
     
     @force_torque.setter
@@ -196,14 +289,13 @@ class Robot(ABC):
     def __init__(self, urdf_filename: str, base_transform: SE3 = SE3()):
         self._urdf_filename = urdf_filename
         self._base_transform = base_transform
-        self._joint_state = JointState(6)
-        self._force_sensor_link = None
+        self._joint_state: JointState = None
         self.__controllers_types ={
             RobotControllerType.JOINT_POSITIONS.value: self._send_jointcontrol_position,
             RobotControllerType.JOINT_VELOCITIES.value: self._send_jointcontrol_velocity,
             RobotControllerType.JOINT_TORQUES.value: self._send_jointcontrol_torque,
-            RobotControllerType.TF.value: self._send_cartcontrol_position,
-            RobotControllerType.TWIST.value: self._send_cartcontrol_velocity
+            RobotControllerType.TF.value: self._send_eecontrol_position,
+            RobotControllerType.TWIST.value: self._send_eecontrol_velocity
         }
 
     @abstractmethod
@@ -215,15 +307,15 @@ class Robot(ABC):
         pass
 
     @abstractmethod
-    def _send_cartcontrol_position(self, tf: SE3()) -> bool:
-        pass
-
-    @abstractmethod
-    def _send_cartcontrol_velocity(self, velocity: np.ndarray) -> bool:
-        pass
-
-    @abstractmethod
     def _send_jointcontrol_torque(self, torque: np.ndarray) -> bool:
+        pass
+
+    @abstractmethod
+    def _send_eecontrol_position(self, tf: SE3()) -> bool:
+        pass
+
+    @abstractmethod
+    def _send_eecontrol_velocity(self, velocity: np.ndarray) -> bool:
         pass
 
     @abstractmethod
@@ -231,16 +323,13 @@ class Robot(ABC):
         pass
 
     @abstractmethod
-    def _update_cartesian_state(self, tool_state: EEState):
+    def _update_ee_state(self, tool_state: EEState):
         pass
 
     @abstractmethod
     def jacobian(self, joint_pose: np.ndarray, ee_link: str):
         pass
 
-    @abstractmethod
-    def apply_force_sensor(self, link: str):
-        pass
 
     @abstractmethod
     def reset(self):
@@ -248,6 +337,11 @@ class Robot(ABC):
 
     @abstractmethod
     def reset_joint_state(self, jstate:JointState):
+        pass
+
+    @property
+    @abstractmethod
+    def joint_limits(self) -> JointLimits:
         pass
     
     @property
@@ -262,7 +356,7 @@ class Robot(ABC):
     def ee_state(self, ee_link: str, ref_frame: str = 'world') -> EEState:
         tool_state = EEState(ee_link, ref_frame)
         self._update_joint_state(self._joint_state)
-        self._update_cartesian_state(tool_state)
+        self._update_ee_state(tool_state)
         return tool_state
 
     def set_control(self, target_motion: Motion, type_ctrl: RobotControllerType) -> bool:
@@ -278,9 +372,3 @@ class Robot(ABC):
         if not target is None:
             return self.__controllers_types[type_ctrl.value](target)
         return False
-
-
-def eestate_transform(eestate: EEState, tf: SE3):
-    eestate.tf = tf@eestate.tf
-    eestate.twist = np.kron(np.eye(2,dtype=int), tf.R) @ eestate.twist
-    eestate.force_torque = np.kron(np.eye(2,dtype=int), tf.R) @ eestate.force_torque

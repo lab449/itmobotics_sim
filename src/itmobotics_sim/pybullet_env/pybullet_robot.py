@@ -30,6 +30,8 @@ class PyBulletRobot(robot.Robot):
         self.__external_models = {}
         self.__tool_list = []
 
+        self.__joint_limits: robot.JointLimits = None
+
     def __del__(self):
         for m in self.__external_models.keys():
             if os.path.exists(self.__external_models[m]["urdf_filename"]):
@@ -111,8 +113,8 @@ class PyBulletRobot(robot.Robot):
             refFrameState = p.getLinkState(self.__robot_id, self.__joint_id_for_link[ref_frame])
             _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
             in_base_tf =  SE3(*ref_frame_pos)@ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))
-            base_ee_state.tf = in_base_tf@base_ee_state.tf
-            base_ee_state.twist = np.kron(np.eye(2,dtype=int), in_base_tf.R)@base_ee_state.twist
+            base_ee_state.tf = in_base_tf @ base_ee_state.tf
+            base_ee_state.twist = np.kron(np.eye(2,dtype=int), in_base_tf.R) @ base_ee_state.twist
 
          # In PyBullet quaternioun described as xywz, but in spatialmath wxyz
         position = tuple(base_ee_state.tf.t)
@@ -152,10 +154,10 @@ class PyBulletRobot(robot.Robot):
         J = np.concatenate((Jv,Jw), axis=0)
         return J
     
-    def _send_cartcontrol_position(self, position: np.ndarray) -> bool:
+    def _send_eecontrol_position(self, position: np.ndarray) -> bool:
         raise RuntimeError('Robot does not support this type of control')
 
-    def _send_cartcontrol_velocity(self, velocity: np.ndarray) -> bool:
+    def _send_eecontrol_velocity(self, velocity: np.ndarray) -> bool:
         raise RuntimeError('Robot does not support this type of control')
 
     def _send_jointcontrol_velocity(self, velocity: np.ndarray) -> bool:
@@ -195,32 +197,32 @@ class PyBulletRobot(robot.Robot):
         )
         return True
     
-    def _update_cartesian_state(self, tool_state: robot.EEState):
+    def _update_ee_state(self, tool_state: robot.EEState):
         # print(p.getNumJoints(self.__robot_id))
         if not self.__initialized:
             raise RuntimeError('Robot was not initialized')
         if tool_state.ee_link!='world':
-            eeState = p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link])
-            _,_,_,_, link_frame_pos, link_frame_rot = eeState
+            eeState = p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link], computeLinkVelocity=1)
+            _,_,_,_, link_frame_pos, link_frame_rot, link_frame_pos_vel, link_frame_rot_vel = eeState
         else:
             link_frame_pos = np.zeros(3)
             link_frame_rot = np.array([0,0,0,1])
         
         tool_state.tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
-
-        self._update_joint_state(self.joint_state)
-        tool_state.twist = self.jacobian(self.joint_state.joint_positions, tool_state.ee_link, tool_state.ref_frame).dot(
-            self.joint_state.joint_velocities
-        )
+        tool_state.twist = np.concatenate([link_frame_pos_vel, link_frame_rot_vel])
         
         pb_joint_state = p.getJointStates(self.__robot_id, [self.__joint_id_for_link[tool_state.ee_link]])
         tool_state.force_torque = np.array(pb_joint_state[0][2])
 
         if tool_state.ref_frame != 'world':
-            refFrameState = p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ref_frame])
-            _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
+            refFrameState = p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ref_frame], computeLinkVelocity=1)
+            _,_,_,_, ref_frame_pos, ref_frame_rot, ref_frame_pos_vel, ref_frame_rot_vel  = refFrameState
+            ref_frame_twist = np.concatenate([ref_frame_pos_vel, ref_frame_rot_vel])
+
             tool_state.tf = (SE3(*ref_frame_pos) @ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))).inv() @ tool_state.tf
-            tool_state.force_torque = np.kron(np.eye(2,dtype=int), R.from_quat(ref_frame_rot).as_matrix()) @ tool_state.force_torque
+            rotation_6d = np.kron(np.eye(2,dtype=int), R.from_quat(ref_frame_rot).inv().as_matrix())
+            tool_state.twist = rotation_6d @ (tool_state.twist - ref_frame_twist)
+            tool_state.force_torque = rotation_6d @ tool_state.force_torque
     
     def _update_joint_state(self, joint_state: robot.JointState):
         if not self.__initialized:
@@ -229,9 +231,6 @@ class PyBulletRobot(robot.Robot):
         joint_state.joint_positions = np.array([state[0] for state in pb_joint_state])
         joint_state.joint_velocities = np.array([state[1] for state in pb_joint_state])
         joint_state.joint_torques = np.array([state[3] for state in pb_joint_state])
-    
-    def apply_force_sensor(self, link: str):
-        pass
     
     def __remove_robot_body(self):
         if self.__robot_id is None:
@@ -259,15 +258,33 @@ class PyBulletRobot(robot.Robot):
         self.__joint_id_for_link = {}
         self.__actuators_name_list = []
 
+        _p_limits = [[], []]
+        _v_limits = [[], []]
+        _t_limits = [[], []]
         for _id in range(p.getNumJoints(self.__robot_id)):
             # print(p.getJointInfo(self.__robot_id, _id))
-            _name = p.getJointInfo(self.__robot_id, _id)[12].decode('UTF-8')
-            if p.getJointInfo(self.__robot_id, _id)[4] != -1:
+            joint_info = p.getJointInfo(self.__robot_id, _id)
+
+            _name = joint_info[12].decode('UTF-8')
+            if joint_info[4] != -1:
                 self.__actuators_name_list.append(_name)
+                _p_limits[0].append(joint_info[8]); _p_limits[1].append(joint_info[9])
+                _t_limits[0].append(-joint_info[10]); _t_limits[1].append(joint_info[10])
+                _v_limits[0].append(-joint_info[11]); _v_limits[1].append(joint_info[11])
             self.__joint_id_for_link[_name] = _id
         
         self.__actuators_id_list = [self.__joint_id_for_link[a] for a in self.__actuators_name_list]
         self.__num_actuators = len(self.__actuators_id_list)
+        for i in range(0, 2):
+            _p_limits[i] = np.array(_p_limits[i])
+            _v_limits[i] = np.array(_v_limits[i])
+            _t_limits[i] = np.array(_t_limits[i])
+        # print(tuple(_p_limits))
+        self.__joint_limits = robot.JointLimits(
+            tuple(_p_limits),
+            tuple(_v_limits),
+            tuple(_t_limits)
+        )
         self._joint_state = robot.JointState(self.__num_actuators)
         p.setJointMotorControlArray(self.__robot_id, self.__actuators_id_list,
                                     p.VELOCITY_CONTROL, 
@@ -285,6 +302,9 @@ class PyBulletRobot(robot.Robot):
 
         for _id in range(p.getNumJoints(self.__robot_id)):
             p.enableJointForceTorqueSensor(self.__robot_id, _id, 1)
+        
+        self._update_joint_state(self._joint_state)
+        
 
     def clear_id(self):
        self.__initialized = False
@@ -298,6 +318,10 @@ class PyBulletRobot(robot.Robot):
     @property
     def robot_id(self) -> int:
         return self.__robot_id
+    
+    @property
+    def joint_limits(self) -> robot.JointLimits:
+        return self.__joint_limits
     
     def link_id(self, link_name: str) -> int:
         return self.__joint_id_for_link[link_name]

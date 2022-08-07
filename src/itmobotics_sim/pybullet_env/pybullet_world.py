@@ -1,3 +1,5 @@
+import os, sys
+
 import pybullet as p
 import pybullet_data
 import pybullet_utils.bullet_client as bc
@@ -7,6 +9,9 @@ import enum
 from spatialmath import SE3, SO3
 from scipy.spatial.transform import Rotation as R
 from .pybullet_robot import PyBulletRobot
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils import robot
 
 class GUI_MODE(enum.Enum):
     DIRECT = enum.auto()
@@ -32,6 +37,10 @@ class PyBulletWorld():
 
         self.__objects = {}
         self.reset()
+    
+    def __del__(self):
+        print("Pybullet disconnecting")
+        p.disconnect()
     
     def add_robot(self, robot: PyBulletRobot, name: str = 'robot') -> bool:
         if name in self.__robots.keys():
@@ -71,21 +80,24 @@ class PyBulletWorld():
         p.removeBody(self.__objects[name]["id"])
         del self.__objects[name]
 
-    def link_tf(self, model_name: str, link: str, reference_model_name: str, reference_link: str) -> SE3:
-        if model_name in self.__objects:
-            pr = p.getLinkState(self.__objects[model_name]["id"], self.__objects[model_name]["link_id"][link])
-        elif model_name in self.__robots:
-            pr = p.getLinkState(self.__robots[model_name].robot_id, self.__robots[model_name].link_id(link))
-        else:
-            raise RuntimeError('Unknown model name. Please check that object or robot model has been added to the simulator with name: {:s}.\n List of added robot models: {:s}.\n List of added object models: {:s}'.format(model_name, str(list(self.__robots.keys())), str(list(self.__objects.keys()))))
-        _,_,_,_, link_frame_pos, link_frame_rot = pr
-        tf_link_in_to_world = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
-        print(tf_link_in_to_world)
-        if reference_model_name == "" or reference_link == "world":
-            return tf_link_in_to_world
+    def link_state(self, model_name: str, link: str, reference_model_name: str, reference_link: str) -> robot.EEState:
+        link_state = robot.EEState.from_tf(SE3(0.0, 0.0, 0.0), ee_link=link, ref_link=reference_link)
+        if link != 'world':
+            if model_name in self.__objects:
+                pr = p.getLinkState(self.__objects[model_name]["id"], self.__objects[model_name]["link_id"][link], computeLinkVelocity=1)
+            elif model_name in self.__robots:
+                pr = p.getLinkState(self.__robots[model_name].robot_id, self.__robots[model_name].link_id(link), computeLinkVelocity=1)
+            else:
+                raise RuntimeError('Unknown model name. Please check that object or robot model has been added to the simulator with name: {:s}.\n List of added robot models: {:s}.\n List of added object models: {:s}'.format(model_name, str(list(self.__robots.keys())), str(list(self.__objects.keys()))))
+            
+            _,_,_,_, link_frame_pos, link_frame_rot, link_frame_pos_vel, link_frame_rot_vel = pr
+            link_state.tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
+            
 
-        # print(self.__robots)
-        # print(reference_model_name)
+        if reference_model_name == "" or reference_link == "world":
+            return link_state
+
+
         if reference_model_name in self.__objects:
             pr = p.getLinkState(self.__objects[reference_model_name]["id"], self.__objects[reference_model_name]["link_id"][reference_link])
         elif reference_model_name in self.__robots:
@@ -94,10 +106,8 @@ class PyBulletWorld():
             raise RuntimeError('Unknown reference model name. Please check that object or robot model has been added to the simulator with name: {:s}.\n List of added robot models: {:s}.\n List of added object models: {:s}'.format(reference_model_name, str(list(self.__robots.keys())), str(list(self.__objects.keys()))))
         _,_,_,_, link_frame_pos, link_frame_rot = pr
         reference_tf_link_in_to_world = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
-        print(reference_tf_link_in_to_world)
 
         tf_in_to_reference = reference_tf_link_in_to_world.inv() @ tf_link_in_to_world
-        print(tf_in_to_reference)
         return tf_in_to_reference
     
 
