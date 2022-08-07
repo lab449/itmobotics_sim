@@ -3,8 +3,7 @@ from enum import Enum, auto
 
 import numpy as np
 from abc import ABC, abstractmethod
-from spatialmath import SE3, SO3
-
+from spatialmath import SE3
 class RobotControllerType(Enum):
     JOINT_POSITIONS = 'joint_positions'
     JOINT_VELOCITIES = 'joint_velocities'
@@ -280,3 +279,8 @@ class Robot(ABC):
             return self.__controllers_types[type_ctrl.value](target)
         return False
 
+
+def eestate_transform(eestate: EEState, tf: SE3):
+    eestate.tf = tf@eestate.tf
+    eestate.twist = np.kron(np.eye(2,dtype=int), tf.R) @ eestate.twist
+    eestate.force_torque = np.kron(np.eye(2,dtype=int), tf.R) @ eestate.force_torque

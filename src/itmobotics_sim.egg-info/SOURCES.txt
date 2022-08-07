@@ -16,6 +16,7 @@ src/itmobotics_sim/pybullet_env/pybullet_world.py
 src/itmobotics_sim/pybullet_env/urdf_editor.py
 src/itmobotics_sim/utils/__init__.py
 src/itmobotics_sim/utils/controllers.py
+src/itmobotics_sim/utils/math.py
 src/itmobotics_sim/utils/robot.py
 src/itmobotics_sim/utils/__pycache__/__init__.cpython-38.pyc
 src/itmobotics_sim/utils/__pycache__/controllers.cpython-38.pyc

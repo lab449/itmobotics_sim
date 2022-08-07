@@ -21,7 +21,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     license='MIT',
-    download_url = 'https://github.com/user/reponame/archive/v_02.tar.gz',
+    download_url = 'https://github.com/ITMORobotics/itmobotics_sim/archive/refs/tags/v0.0.3.tar.gz',
     include_package_data=True,
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),

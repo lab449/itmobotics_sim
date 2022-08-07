@@ -73,6 +73,9 @@ class URDFEditor:
         join_root_xml = join_et.getroot()
         for link in join_root_xml.findall('link'):
             self.__et.getroot().append(link)
+        
+        for link in join_root_xml.findall('joint'):
+            self.__et.getroot().append(link)
 
         # import xml.etree.ElementTree as ET
         # tree = ET.parse('country_data.xml')
@@ -91,7 +94,7 @@ class URDFEditor:
 
         joint_xml_string = self.__xmlJointTemplate%data
         # print(joint_xml_string)
-        new_joint_xml = xml.etree.ElementTree.fromstring(self.__xmlJointTemplate%data)
+        new_joint_xml = xml.etree.ElementTree.fromstring(joint_xml_string)
         self.__et.getroot().append(new_joint_xml)
     
     def save(self, filename: str):

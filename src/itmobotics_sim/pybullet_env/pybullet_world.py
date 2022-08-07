@@ -40,40 +40,66 @@ class PyBulletWorld():
         robot.reset()
         return True
     
-    def add_object(self, name:str, urdf_filename: str, base_transform: SE3 = SE3(), fixed=True, save=False):
+    def add_object(self, name:str, urdf_filename: str, base_transform: SE3 = SE3(), fixed: bool = True, save: bool = False, scale_size: float = 1.0):
         if name in self.__objects.keys():
             self.remove_object(name)
             print('Replace object with name {:s}'.format(name))
-        self.__append_object(name, urdf_filename, base_transform, fixed, save)
+        self.__append_object(name, urdf_filename, base_transform, fixed, save, scale_size)
     
-    def __append_object(self, name:str, urdf_filename: str, base_transform: SE3, fixed: bool, save: bool):
+    def __append_object(self, name:str, urdf_filename: str, base_transform: SE3, fixed: bool, save: bool, scale_size: float):
         base_pose = base_transform.t.tolist() # World position [x,y,z]
         base_orient = R.from_matrix(base_transform.R).as_quat().tolist() # Quaternioun [x,y,z,w]
-        # print("Load %s, in %s", name, base_pose)
         obj_id = p.loadURDF(
             urdf_filename,
             basePosition=base_pose,
             baseOrientation=base_orient,
-            useFixedBase=fixed
+            useFixedBase=fixed,
+            globalScaling=scale_size
         )
+        print("Load {:s}, in {:s}, given id: {:s}".format( name, str(base_pose), str(obj_id)))
         num_joints = p.getNumJoints(obj_id)
+        print("NUm joints: ", num_joints)
         link_id = {}
         for _id in range(num_joints):
             _name = p.getJointInfo(obj_id, _id)[12].decode('UTF-8')
             link_id[_name] = _id
         
-        self.__objects[name] = {"id": obj_id, "urdf_filename": urdf_filename, "base_tf": base_transform, "fixed": fixed, "save": save, "link_id": link_id}
+        self.__objects[name] = {"id": obj_id, "urdf_filename": urdf_filename, "base_tf": base_transform, "fixed": fixed, "save": save, "link_id": link_id, "scale_size": scale_size}
     
     def remove_object(self, name: str):
         assert name in self.__objects, "Undefined object: {:s}".format(name)
         p.removeBody(self.__objects[name]["id"])
         del self.__objects[name]
 
-    def link_tf(self, object_name: str, link:str) -> SE3:
-        pr = p.getLinkState(self.__objects[object_name]["id"], self.__objects[object_name]["link_id"][link])
+    def link_tf(self, model_name: str, link: str, reference_model_name: str, reference_link: str) -> SE3:
+        if model_name in self.__objects:
+            pr = p.getLinkState(self.__objects[model_name]["id"], self.__objects[model_name]["link_id"][link])
+        elif model_name in self.__robots:
+            pr = p.getLinkState(self.__robots[model_name].robot_id, self.__robots[model_name].link_id(link))
+        else:
+            raise RuntimeError('Unknown model name. Please check that object or robot model has been added to the simulator with name: {:s}.\n List of added robot models: {:s}.\n List of added object models: {:s}'.format(model_name, str(list(self.__robots.keys())), str(list(self.__objects.keys()))))
         _,_,_,_, link_frame_pos, link_frame_rot = pr
-        tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
-        return tf
+        tf_link_in_to_world = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
+        print(tf_link_in_to_world)
+        if reference_model_name == "" or reference_link == "world":
+            return tf_link_in_to_world
+
+        # print(self.__robots)
+        # print(reference_model_name)
+        if reference_model_name in self.__objects:
+            pr = p.getLinkState(self.__objects[reference_model_name]["id"], self.__objects[reference_model_name]["link_id"][reference_link])
+        elif reference_model_name in self.__robots:
+            pr = p.getLinkState(self.__robots[reference_model_name].robot_id, self.__robots[reference_model_name].link_id(reference_link))
+        else:
+            raise RuntimeError('Unknown reference model name. Please check that object or robot model has been added to the simulator with name: {:s}.\n List of added robot models: {:s}.\n List of added object models: {:s}'.format(reference_model_name, str(list(self.__robots.keys())), str(list(self.__objects.keys()))))
+        _,_,_,_, link_frame_pos, link_frame_rot = pr
+        reference_tf_link_in_to_world = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
+        print(reference_tf_link_in_to_world)
+
+        tf_in_to_reference = reference_tf_link_in_to_world.inv() @ tf_link_in_to_world
+        print(tf_in_to_reference)
+        return tf_in_to_reference
+    
 
     def sim_step(self):
         p.stepSimulation()
@@ -88,7 +114,7 @@ class PyBulletWorld():
         p.resetSimulation()
         p.setGravity(0, 0, -9.82)
         p.setTimeStep(self.__time_step)
-        p.setPhysicsEngineParameter(fixedTimeStep=self.__time_step, numSolverIterations=100, numSubSteps=10)
+        p.setPhysicsEngineParameter(fixedTimeStep=self.__time_step, numSolverIterations=100, numSubSteps=2, useSplitImpulse=1)
         p.setRealTimeSimulation(False)
 
         self.__world_model = p.loadURDF(self.__urdf_filename, useFixedBase=True)
@@ -101,8 +127,9 @@ class PyBulletWorld():
         for n in self.__objects:
             obj = dict(self.__objects[n])
             if obj["save"]:
-                self.__append_object(n, obj["urdf_filename"], obj["base_tf"], obj["fixed"], obj["save"])
+                self.__append_object(n, obj["urdf_filename"], obj["base_tf"], obj["fixed"], obj["save"], obj["scale_size"])
         
+        # For the initial state calculation of the models
 
     @property
     def sim_time(self) -> float:

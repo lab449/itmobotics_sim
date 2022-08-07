@@ -49,7 +49,7 @@ class testPyBulletRobot(unittest.TestCase):
         self.__controller_pose2 = CartPositionToCartVelocityController(self.__robot2)
         self.__controller_pose2.connect_controller(self.__controller_speed2)
 
-        self.__sim.add_object('hole_round2', 'urdf/hole_round.urdf', base_transform = SE3(0.1, 0.0, 0.675), fixed = True, save = True)
+        self.__sim.add_object('hole_round2', 'urdf/hole_round.urdf', base_transform = SE3(0.1, 0.0, 0.675), fixed = True, save = True, scale_size = 1.1)
 
 
     def __reset(self):
