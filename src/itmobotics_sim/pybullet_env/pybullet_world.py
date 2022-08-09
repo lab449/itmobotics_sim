@@ -92,23 +92,26 @@ class PyBulletWorld():
             
             _,_,_,_, link_frame_pos, link_frame_rot, link_frame_pos_vel, link_frame_rot_vel = pr
             link_state.tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
+            link_state.twist = np.concatenate([link_frame_pos_vel, link_frame_rot_vel])
             
-
         if reference_model_name == "" or reference_link == "world":
             return link_state
 
-
         if reference_model_name in self.__objects:
-            pr = p.getLinkState(self.__objects[reference_model_name]["id"], self.__objects[reference_model_name]["link_id"][reference_link])
+            pr = p.getLinkState(self.__objects[reference_model_name]["id"], self.__objects[reference_model_name]["link_id"][reference_link], computeLinkVelocity=1)
         elif reference_model_name in self.__robots:
-            pr = p.getLinkState(self.__robots[reference_model_name].robot_id, self.__robots[reference_model_name].link_id(reference_link))
+            pr = p.getLinkState(self.__robots[reference_model_name].robot_id, self.__robots[reference_model_name].link_id(reference_link), computeLinkVelocity=1)
         else:
             raise RuntimeError('Unknown reference model name. Please check that object or robot model has been added to the simulator with name: {:s}.\n List of added robot models: {:s}.\n List of added object models: {:s}'.format(reference_model_name, str(list(self.__robots.keys())), str(list(self.__objects.keys()))))
-        _,_,_,_, link_frame_pos, link_frame_rot = pr
-        reference_tf_link_in_to_world = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
+        _,_,_,_, ref_frame_pos, ref_frame_rot, ref_frame_pos_vel, ref_frame_rot_vel = pr
+        ref_frame_twist = np.concatenate([ref_frame_pos_vel, ref_frame_rot_vel])
 
-        tf_in_to_reference = reference_tf_link_in_to_world.inv() @ tf_link_in_to_world
-        return tf_in_to_reference
+        link_state.tf = (SE3(*ref_frame_pos) @ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))).inv() @ link_state.tf
+        rotation_6d = np.kron(np.eye(2,dtype=int), R.from_quat(ref_frame_rot).inv().as_matrix())
+        link_state.twist = rotation_6d @ (link_state.twist - ref_frame_twist)
+        link_state.force_torque = rotation_6d @ link_state.force_torque
+
+        return link_state
     
 
     def sim_step(self):

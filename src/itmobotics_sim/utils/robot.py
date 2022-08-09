@@ -103,7 +103,7 @@ class JointState():
     def __init__(self, num_joints: int):
         self.__num_joints = num_joints
         self.__joint_positions: np.ndarray = None
-        self.__joint_velocities: np.ndarray = None
+        self.__joint_velocities: np.ndarray = np.zeros(num_joints)
         self.__joint_torques: np.ndarray =  np.zeros(num_joints)
 
     def __str__(self):
@@ -209,6 +209,14 @@ class EEState():
         rotation_6d = np.kron(np.eye(2,dtype=int), tf.R)
         self.twist = rotation_6d @ self.twist
         self.force_torque =rotation_6d @ self.force_torque
+    
+    def inv(self):
+        self.tf = self.tf.inv()
+        self.twist = -self.twist
+        self.force_torque = self.force_torque()
+        ref = self.ref_frame
+        self.ee_link = ref
+        self.__ref_frame = self.ee_link
 
     @property
     def ee_link(self) -> str:
@@ -329,7 +337,6 @@ class Robot(ABC):
     @abstractmethod
     def jacobian(self, joint_pose: np.ndarray, ee_link: str):
         pass
-
 
     @abstractmethod
     def reset(self):

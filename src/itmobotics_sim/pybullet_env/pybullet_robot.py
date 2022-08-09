@@ -116,13 +116,21 @@ class PyBulletRobot(robot.Robot):
             base_ee_state.tf = in_base_tf @ base_ee_state.tf
             base_ee_state.twist = np.kron(np.eye(2,dtype=int), in_base_tf.R) @ base_ee_state.twist
 
-         # In PyBullet quaternioun described as xywz, but in spatialmath wxyz
+         # In PyBullet quaternioun described as xyzw, but in spatialmath wxyz
         position = tuple(base_ee_state.tf.t)
-        spm_quaternioun = tuple(r2q(base_ee_state.tf.R))
-        orientation = tuple([spm_quaternioun[1], spm_quaternioun[2], spm_quaternioun[0], spm_quaternioun[3]])
+        orientation = tuple(r2q(base_ee_state.tf.R,order='xyzs'))
 
         js = robot.JointState(self.__num_actuators)
-        js.joint_positions = np.array(list(p.calculateInverseKinematics(self.__robot_id, self.__joint_id_for_link[eestate.ee_link], position, orientation, maxNumIterations=1000, residualThreshold=1e-6)) )
+        js.joint_positions = np.array(list(p.calculateInverseKinematics(
+            self.__robot_id, self.__joint_id_for_link[eestate.ee_link],
+            position,
+            orientation,
+            maxNumIterations=1000,
+            residualThreshold=1e-6,
+            restPoses = list(self._joint_state.joint_positions),
+            lowerLimits = list(self.joint_limits.limit_positions[0]),
+            upperLimits = list(self.joint_limits.limit_positions[1])
+        )) )
         js.joint_velocities = np.linalg.pinv(self.jacobian(js.joint_positions, eestate.ee_link, eestate.ref_frame)) @ base_ee_state.twist
         # print(js)
         self.reset_joint_state(js)
