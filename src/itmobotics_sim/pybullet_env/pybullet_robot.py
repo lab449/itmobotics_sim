@@ -84,7 +84,6 @@ class PyBulletRobot(robot.Robot):
         self.__reset_tools()
     
     def __reset_tools(self):
-        self._urdf_filename = self.__base_urdf_filename
         for i in range(0, len(self.__tool_list)):
             t = self.__tool_list[i]
             if not self.__external_models[t]["save"]:

@@ -65,9 +65,7 @@ class PyBulletWorld():
             useFixedBase=fixed,
             globalScaling=scale_size
         )
-        print("Load {:s}, in {:s}, given id: {:s}".format( name, str(base_pose), str(obj_id)))
         num_joints = p.getNumJoints(obj_id)
-        print("NUm joints: ", num_joints)
         link_id = {}
         for _id in range(num_joints):
             _name = p.getJointInfo(obj_id, _id)[12].decode('UTF-8')
@@ -83,13 +81,15 @@ class PyBulletWorld():
     def link_state(self, model_name: str, link: str, reference_model_name: str, reference_link: str) -> robot.EEState:
         link_state = robot.EEState.from_tf(SE3(0.0, 0.0, 0.0), ee_link=link, ref_link=reference_link)
         if link != 'world':
-            if model_name in self.__objects:
-                pr = p.getLinkState(self.__objects[model_name]["id"], self.__objects[model_name]["link_id"][link], computeLinkVelocity=1)
-            elif model_name in self.__robots:
-                pr = p.getLinkState(self.__robots[model_name].robot_id, self.__robots[model_name].link_id(link), computeLinkVelocity=1)
-            else:
-                raise RuntimeError('Unknown model name. Please check that object or robot model has been added to the simulator with name: {:s}.\n List of added robot models: {:s}.\n List of added object models: {:s}'.format(model_name, str(list(self.__robots.keys())), str(list(self.__objects.keys()))))
-            
+            try:
+                if model_name in self.__objects:
+                    pr = p.getLinkState(self.__objects[model_name]["id"], self.__objects[model_name]["link_id"][link], computeLinkVelocity=1)
+                elif model_name in self.__robots:
+                    pr = p.getLinkState(self.__robots[model_name].robot_id, self.__robots[model_name].link_id(link), computeLinkVelocity=1)
+                else:
+                    raise KeyError('Unknown model name. Please check that object or robot model has been added to the simulator with name: {:s}.\n List of added robot models: {:s}.\n List of added object models: {:s}'.format(model_name, str(list(self.__robots.keys())), str(list(self.__objects.keys()))))
+            except KeyError:
+                raise KeyError("Unknown link id for link: {:s} in model: {:s}. Please check target link and model name. Check that required tool was connected".format(link, model_name))
             _,_,_,_, link_frame_pos, link_frame_rot, link_frame_pos_vel, link_frame_rot_vel = pr
             link_state.tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
             link_state.twist = np.concatenate([link_frame_pos_vel, link_frame_rot_vel])
