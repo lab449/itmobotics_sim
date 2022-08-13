@@ -218,8 +218,8 @@ class PyBulletRobot(robot.Robot):
         tool_state.tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
         tool_state.twist = np.concatenate([link_frame_pos_vel, link_frame_rot_vel])
         
-        pb_joint_state = p.getJointStates(self.__robot_id, [self.__joint_id_for_link[tool_state.ee_link]])
-        tool_state.force_torque = np.array(pb_joint_state[0][2])
+        pb_joint_state = p.getJointState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link])
+        tool_state.force_torque = np.array(pb_joint_state[2])
 
         if tool_state.ref_frame != 'world':
             refFrameState = p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ref_frame], computeLinkVelocity=1)
@@ -229,7 +229,7 @@ class PyBulletRobot(robot.Robot):
             tool_state.tf = (SE3(*ref_frame_pos) @ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))).inv() @ tool_state.tf
             rotation_6d = np.kron(np.eye(2,dtype=int), R.from_quat(ref_frame_rot).inv().as_matrix())
             tool_state.twist = rotation_6d @ (tool_state.twist - ref_frame_twist)
-            tool_state.force_torque = rotation_6d @ tool_state.force_torque
+            # tool_state.force_torque = rotation_6d @ tool_state.force_torque
     
     def _update_joint_state(self, joint_state: robot.JointState):
         if not self.__initialized:
