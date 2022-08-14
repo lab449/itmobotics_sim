@@ -1,4 +1,4 @@
-# pybullet_sim
+# itmobotics_sim
 IT's MOre than a roBOTICS SIMulator - The framework for simulating open loop kinematic robots in the best traditions of sim2real concept. 
 
 ## Installation
