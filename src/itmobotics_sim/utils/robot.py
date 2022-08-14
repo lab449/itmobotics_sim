@@ -78,7 +78,7 @@ class JointLimits():
             "Diffrent shapes of lower an upper limits: {:d} and {:d} respectively".format(
             limit[0].shape[0], limit[1].shape[0]
         )
-        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jpose.shape[0])
+        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, limit[0].shape[0])
         self.__limit_positions = limit
 
     @limit_velocities.setter
@@ -87,7 +87,7 @@ class JointLimits():
             "Diffrent shapes of lower an upper limits: {:d} and {:d} respectively".format(
             limit[0].shape[0], limit[1].shape[0]
         )
-        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jpose.shape[0])
+        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, limit[0].shape[0])
         self.__limit_velocities = limit
     
     @limit_torques.setter
@@ -96,7 +96,7 @@ class JointLimits():
             "Diffrent shapes of lower an upper limits: {:d} and {:d} respectively".format(
             limit[0].shape[0], limit[1].shape[0]
         )
-        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, jpose.shape[0])
+        assert self.__num_joints == limit[0].shape[0],'Invalid input vector size, expected {:d}, but given {:d}'.format(self.__num_joints, limit[0].shape[0])
         self.__limit_torques = limit
 
 class JointState():

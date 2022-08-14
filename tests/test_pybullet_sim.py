@@ -27,8 +27,8 @@ target_motion2 = copy.deepcopy(target_motion)
 class testPyBulletRobot(unittest.TestCase):
     def setUp(self):
         self.__sim = PyBulletWorld(gui_mode = GUI_MODE.SIMPLE_GUI, time_step = 0.01, time_scale=5)
-        self.__sim.add_object('table', 'urdf/table.urdf')
-        self.__robot = PyBulletRobot('urdf/iiwa14_pybullet.urdf', SE3(0,0,0.625))
+        self.__sim.add_object('table', 'tests/urdf/table.urdf')
+        self.__robot = PyBulletRobot('tests/urdf/iiwa14_pybullet.urdf', SE3(0,0,0.625))
         self.__sim.add_robot(self.__robot, 'robot1')
         self.__controller_speed = EEVelocityToJointVelocityController(self.__robot)
         self.__controller_pose = EEPositionToEEVelocityController(self.__robot)
@@ -38,6 +38,7 @@ class testPyBulletRobot(unittest.TestCase):
         self.assertIsNotNone(self.__robot.joint_limits)
         print(self.__robot.joint_limits)
 
+    @unittest.skip
     def test_clip_joint_state(self):
         self.__sim.sim_step()
         js = self.__robot.joint_state
