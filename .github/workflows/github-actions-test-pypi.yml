@@ -38,7 +38,7 @@ jobs:
         --outdir dist/
     - name: Test with pytest
       run: |
-        pytest
+        python -m pytest
     
     # Publish
     - name: Publish distribution 📦 to Test PyPI
