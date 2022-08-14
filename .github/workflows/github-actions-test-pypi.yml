@@ -36,6 +36,7 @@ jobs:
         --sdist
         --wheel
         --outdir dist/
+      python3 setup.py install
     - name: Test with pytest
       run: |
         pip list
