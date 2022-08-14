@@ -38,7 +38,7 @@ jobs:
         --outdir dist
     - name: Install builded package
       run: >-
-        python -m setup.py install
+        python -m setup install
     - name: Test with pytest
       run: |
         pip list
