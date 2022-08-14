@@ -29,7 +29,7 @@ target_motion_s = copy.deepcopy(target_motion)
 
 class testPyBulletRobot(unittest.TestCase):
     def setUp(self):
-        self.__sim = PyBulletWorld('plane.urdf',gui_mode = GUI_MODE.SIMPLE_GUI, time_step = 0.01, time_scale=10.0)
+        self.__sim = PyBulletWorld(gui_mode = GUI_MODE.SIMPLE_GUI, time_step = 0.01, time_scale=10.0)
         self.__sim.add_object('hole_round', 'urdf/hole_round.urdf', base_transform = SE3(0.3, -0.5, 0.8), fixed = True, save = True, scale_size=1.1)
         self.__sim.add_object('table', 'urdf/table.urdf', fixed = True, save = True)
         self.__robot = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0, -0.3, 0.625))

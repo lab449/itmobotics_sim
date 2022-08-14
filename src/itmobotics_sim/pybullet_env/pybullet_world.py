@@ -19,8 +19,7 @@ class GUI_MODE(enum.Enum):
     
 
 class PyBulletWorld():
-    def __init__(self, urdf_filename: str ='plane.urdf', gui_mode: GUI_MODE = GUI_MODE.SIMPLE_GUI, time_step:float = 1e-3, time_scale:float = 1):
-        self.__urdf_filename = urdf_filename
+    def __init__(self, gui_mode: GUI_MODE = GUI_MODE.SIMPLE_GUI, time_step:float = 1e-3, time_scale:float = 1):
         self.__time_step = time_step
         self.__time_scale = max(time_scale, 1.0)
         assert self.__time_scale < 1e5, "Large time scale doesn't support, please chose less than 1e5"
@@ -135,14 +134,11 @@ class PyBulletWorld():
         p.setTimeStep(self.__time_step)
         p.setPhysicsEngineParameter(fixedTimeStep=self.__time_step, numSolverIterations=100, numSubSteps=4)
         p.setRealTimeSimulation(False)
-
-        self.__world_model = p.loadURDF(self.__urdf_filename, useFixedBase=True)
         
         for r in self.__robots.keys():
             self.__robots[r].reset()
 
         self.__sim_time = 0.0
-        self.__start_sim_time = time.time()
         for n in self.__objects:
             obj = dict(self.__objects[n])
             if obj["save"]:

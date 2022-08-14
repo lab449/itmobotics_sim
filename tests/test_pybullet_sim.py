@@ -15,21 +15,20 @@ from itmobotics_sim.utils.controllers import EEPositionToEEVelocityController, E
 target_tf = SE3(0.3, 0.0, 1.0) @ SE3.Rx(np.pi)
 target_tf2 = SE3(0.3, 0.0, 1.0) @ SE3.Rx(np.pi)
 
-target_ee_state = EEState.from_tf(target_tf, 'ee_tool')
+target_ee_state = EEState.from_tf(target_tf, 'iiwa_link_ee')
 target_ee_state.twist = np.array([0,0,0.01,0,0,0])
 
 
-target_joint_state = JointState.from_position(np.array([0.0, -np.pi/2, 0.0, -np.pi/2, 0.0, 0.0]))
-target_joint_state = JointState.from_torque(np.zeros(6))
+target_joint_state = JointState.from_position(np.array([0.0, -np.pi/2, 0.0, -np.pi/2, 0.0, 0.0, 0.0]))
 
 target_motion = Motion.from_states(target_joint_state, target_ee_state)
 target_motion2 = copy.deepcopy(target_motion)
 
 class testPyBulletRobot(unittest.TestCase):
     def setUp(self):
-        self.__sim = PyBulletWorld('plane.urdf',gui_mode = GUI_MODE.SIMPLE_GUI, time_step = 0.01, time_scale=5)
+        self.__sim = PyBulletWorld(gui_mode = GUI_MODE.SIMPLE_GUI, time_step = 0.01, time_scale=5)
         self.__sim.add_object('table', 'urdf/table.urdf')
-        self.__robot = PyBulletRobot('urdf/ur5e_pybullet.urdf', SE3(0,0,0.625))
+        self.__robot = PyBulletRobot('urdf/iiwa14_pybullet.urdf', SE3(0,0,0.625))
         self.__sim.add_robot(self.__robot, 'robot1')
         self.__controller_speed = EEVelocityToJointVelocityController(self.__robot)
         self.__controller_pose = EEPositionToEEVelocityController(self.__robot)
@@ -40,6 +39,7 @@ class testPyBulletRobot(unittest.TestCase):
         print(self.__robot.joint_limits)
 
     def test_clip_joint_state(self):
+        self.__sim.sim_step()
         js = self.__robot.joint_state
         self.assertIsNotNone(js)
         self.__robot.joint_limits.clip_joint_state(js)
@@ -53,24 +53,24 @@ class testPyBulletRobot(unittest.TestCase):
         self.assertTrue(np.all(js.joint_torques < self.__robot.joint_limits.limit_torques[1]))
 
     def test_sim(self):
-        self.assertIsNotNone(self.__robot.ee_state('ee_tool'))        
+        self.assertIsNotNone(self.__robot.ee_state('iiwa_link_ee'))        
         
-        while self.__sim.sim_time<10.0:
+        while self.__sim.sim_time<15.0:
             self.__sim.sim_step()
             # print(self.__robot.joint_state)
             if self.__sim.sim_time>3.0:
                 ok = self.__controller_pose.send_control_to_robot(target_motion)
                 self.assertTrue(ok)
-        while self.__sim.sim_time<20.0:
+        while self.__sim.sim_time<35.0:
             self.__sim.sim_step()
             # print(self.__robot.joint_state)
-            if self.__sim.sim_time>13.0:
+            if self.__sim.sim_time>20.0:
                 ok = self.__controller_speed.send_control_to_robot(target_motion2)
                 self.assertTrue(ok)
-        while self.__sim.sim_time<30.0:
+        while self.__sim.sim_time<55.0:
             self.__sim.sim_step()
             # print(self.__robot.joint_state)
-            if self.__sim.sim_time>23.0:
+            if self.__sim.sim_time>40.0:
                 ok = self.__controller_torque.send_control_to_robot(target_motion2)
                 self.assertTrue(ok)
     
