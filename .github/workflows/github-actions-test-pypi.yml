@@ -35,7 +35,7 @@ jobs:
         build
         --sdist
         --wheel
-        --outdir dist/
+        --outdir dist
         python -m setup.py install
     - name: Test with pytest
       run: |
