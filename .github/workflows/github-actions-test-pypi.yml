@@ -12,12 +12,14 @@ jobs:
         python-version: "3.8"
     
     # Build
-    - name: Install dependecies
+    - name: Install PIP dependecies
       run: >-
         python -m
         pip install
         build
         --user
+    - name: Install pytest and flake dependecies
+      run: >-
         python -m pip install --upgrade pip
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
