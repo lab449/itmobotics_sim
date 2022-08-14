@@ -1,5 +1,5 @@
 # pybullet_sim
-Package contain simulation with robot in PyBullet.
+IT's MOre than a roBOTICS SIMulator - The framework for simulating open loop kinematic robots in the best traditions of sim2real concept. 
 
 ## Installation
 For installing package run standart setup.py file:
