@@ -36,12 +36,11 @@ jobs:
         --sdist
         --wheel
         --outdir dist
-    - name: Install builded package
+    - name: Install a builded package
       run: >-
         python -m setup install
     - name: Test with pytest
-      run: |
-        pip list
+      run: >-
         python -m pytest
     
     # Publish
