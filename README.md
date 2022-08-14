@@ -8,7 +8,7 @@ For installing package run standart setup.py file:
     python3 setup.py install
 ```
 
-Installation completed if pip saw your package:
+Installation completed if pip show your package:
  ```bash
     pip3 show itmobotics-sim
 ```
