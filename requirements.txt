@@ -3,3 +3,4 @@ jsonschema
 numpy
 scipy
 spatialmath-python
+pytest
