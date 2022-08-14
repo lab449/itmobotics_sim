@@ -27,6 +27,7 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     package_data={"": ["README.md", "LICENSE.txt"]},
     install_requires=[
+        "jsonschema"
         "numpy >=1.20.0",
         "scipy >= 1.7.0",
         "pybullet >= 3.1.9",

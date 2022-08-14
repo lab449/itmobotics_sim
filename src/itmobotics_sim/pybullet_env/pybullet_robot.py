@@ -1,5 +1,4 @@
 from json import tool
-from ntpath import join
 import sys, os
 import pybullet as p
 from pybullet_utils import bullet_client as bc
