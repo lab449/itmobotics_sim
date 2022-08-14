@@ -38,6 +38,7 @@ jobs:
         --outdir dist/
     - name: Test with pytest
       run: |
+        pip list
         python -m pytest
     
     # Publish
