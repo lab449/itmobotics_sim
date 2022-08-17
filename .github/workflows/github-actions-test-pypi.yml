@@ -1,15 +1,15 @@
 name: Publish distribution 📦 to PyPI and TestPyPI
 on: [push]
 jobs:
-  build:
-    name: Build and test Python 🐍 distributions 📦
+  build-n-publish:
+    name: Build and publish Python 🐍 distributions 📦 to PyPI and TestPyPI
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
     - name: Set up Python 3.8
       uses: actions/setup-python@v3
       with:
-        python-version: "3.8"
+        python-version: 3.8
     
     # Build
     - name: Install PIP dependecies
@@ -23,17 +23,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Install a builded package
-      run: >-
-        pip install -e .
-    - name: Run unit tests
-      run: >-
-        python -m pytest --import-mode=append tests/
-  publish:
-    name: Publish Python 🐍 distributions 📦 to PyPI and TestPyPI
-    runs-on: ubuntu-latest
-    steps:
-    # Publish
     - name: Build a binary wheel and a source tarball
       run: >-
         python -m
@@ -41,6 +30,14 @@ jobs:
         --sdist
         --wheel
         --outdir dist
+    - name: Install a builded package
+      run: >-
+        python -m setup install
+    - name: Test with pytest
+      run: |
+        pytest --exitfirst --verbose --failed-first \
+        --cov=. --cov-report html
+    # Publish
     - name: Publish distribution 📦 to Test PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
