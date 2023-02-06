@@ -3,4 +3,4 @@ __pycache__
 .pytest_cache
 dist
 build/
-src/tmobotics_sim.egg-info/
+src/itmobotics_sim.egg-info/
