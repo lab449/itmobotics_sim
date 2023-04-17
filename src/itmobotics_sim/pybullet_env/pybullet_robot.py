@@ -37,6 +37,7 @@ class PyBulletRobot(robot.Robot):
 
         self.__external_models = {}
         self.__tool_list = []
+        self.__cameras = {}
 
         self.__joint_limits: robot.JointLimits = None
         print(self.__p)
@@ -78,6 +79,45 @@ class PyBulletRobot(robot.Robot):
         self.reset()
         self.reset_joint_state(jj)
         self.__reset_tools()
+    
+    def connect_camera(self, name: str, link: str, resolution: tuple = (1280, 1024), fov: float = 100.0, clip: tuple = (0.000, 5.0)):
+        proj_matrix = self.__p.computeProjectionMatrixFOV(fov, resolution[0]/resolution[1], clip[0], clip[1])
+
+        self.__cameras[name] = {
+            'proj_matrix': proj_matrix,
+            'link': link,
+            'resolution': resolution
+        }
+        
+    def get_image(self, camera_name: str):
+        if not self.__initialized:
+            raise SimulationException('Robot was not initialized')
+        assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
+        
+        # camera pose
+        cam_pos, cam_rot = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[self.__cameras[camera_name]['link']], computeForwardKinematics=1)[4:6]
+        cam_rot = np.array(self.__p.getMatrixFromQuaternion(cam_rot)).reshape(3, 3)
+        # rendering
+        camera_position = cam_pos
+        up_vector = cam_rot.dot([0, 0.001, 0])
+        target = cam_pos + cam_rot.dot([0, 0, 0.001])
+        viewMat = self.__p.computeViewMatrix(camera_position, target, up_vector)
+
+        color, depth, segmask = self.__p.getCameraImage(
+            width=self.__cameras[camera_name]['resolution'][1],
+            height=self.__cameras[camera_name]['resolution'][0],
+            viewMatrix=viewMat,
+            projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
+            renderer=p.ER_BULLET_HARDWARE_OPENGL,
+            flags=p.ER_NO_SEGMENTATION_MASK
+        )[2:5]
+        output = [
+            np.reshape(color, 
+                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., :3],
+            np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
+        ]
+
+        return output
     
     def remove_tool(self, tool_name):
         if not self.__initialized:

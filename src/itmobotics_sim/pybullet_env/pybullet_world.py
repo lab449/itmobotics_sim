@@ -124,7 +124,9 @@ class PyBulletWorld():
         self.__p.stepSimulation()
         self.__sim_time += self.__time_step
         if self.__pybullet_gui_mode == pybullet.GUI:
-            time.sleep(self.__time_step/self.__time_scale)
+            dt = max(self.__time_step/self.__time_scale - (self.__last_real_time - time.time()), 0)
+            time.sleep(dt)
+        self.__last_real_time = time.time()
     
     
     def reset(self):
@@ -141,6 +143,7 @@ class PyBulletWorld():
             self.__robots[r].reset()
 
         self.__sim_time = 0.0
+        self.__last_real_time = time.time()
         
         for n in self.__objects:
             obj = dict(self.__objects[n])
