@@ -128,6 +128,10 @@ class PyBulletWorld():
             time.sleep(dt)
         self.__last_real_time = time.time()
     
+    @property
+    def time_step(self):
+        return self.__time_step
+    
     
     def reset(self):
         for r in self.__robots.keys():
