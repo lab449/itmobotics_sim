@@ -80,7 +80,7 @@ class PyBulletRobot(robot.Robot):
         self.reset_joint_state(jj)
         self.__reset_tools()
     
-    def connect_camera(self, name: str, link: str, resolution: tuple = (1280, 1024), fov: float = 100.0, clip: tuple = (0.000, 5.0)):
+    def connect_camera(self, name: str, link: str, resolution: tuple = (1280, 1024), fov: float = 1000.0, clip: tuple = (0.001, 5.0)):
         proj_matrix = self.__p.computeProjectionMatrixFOV(fov, resolution[0]/resolution[1], clip[0], clip[1])
 
         self.__cameras[name] = {
