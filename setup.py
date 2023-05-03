@@ -3,6 +3,12 @@ import setuptools
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+DOCS_REQUIRE = [
+    "sphinx~=6.2.1",
+    "sphinx-autodoc-typehints~=1.23.0",
+    "sphinx-rtd-theme~=1.2.0",
+]
+
 setuptools.setup(
     name='itmobotics_sim',
     version='0.0.5',
@@ -33,5 +39,8 @@ setuptools.setup(
         "pybullet >= 3.1.9",
         "sympy",
         "spatialmath-python>=0.11"
-   ]
+   ],
+   extras_require={
+        "docs": DOCS_REQUIRE,
+    },
 )
