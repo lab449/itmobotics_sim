@@ -17,6 +17,7 @@ git_rewrite_commit_history.sh
 
 __pycache__/
 _build/
+tests/urdf
 
 # Setuptools distribution and build folders.
 /dist/
