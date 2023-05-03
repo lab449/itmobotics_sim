@@ -42,6 +42,7 @@ class testPyBulletMlultiRobot(unittest.TestCase):
                 }
             )
 
+    # @unittest.skip("Temporal skip")
     def test_reset_state(self):
         new_ee_tf = vec2SE3(np.random.uniform(-0.2, 0.2, 6)) @test_ee_tf
         for a in self.__agents:

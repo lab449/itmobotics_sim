@@ -1,20 +1,21 @@
+import sys, os
+import time
+import copy
 from json import tool
 from ntpath import join
-import sys, os
+import uuid
+
+import numpy as np
+from spatialmath import SE3, SO3
+from spatialmath.base import r2q
+
 import pybullet as p
 import pybullet_utils.bullet_client as bc
 from pybullet_utils import urdfEditor as ed
-import numpy as np
-import time
-import uuid
-import copy
 from scipy.spatial.transform import Rotation as R
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils import robot
-from .urdf_editor import URDFEditor
-from spatialmath import SE3,SO3
-from spatialmath.base import r2q
+from itmobotics_sim.utils import robot
+from itmobotics_sim.pybullet_env.urdf_editor import URDFEditor
 
 class SimulationException(Exception):
     pass

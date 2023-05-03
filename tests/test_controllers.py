@@ -1,17 +1,19 @@
 import os
 import sys
-from typing import final
-import numpy as np
 import copy
+from typing import final
+import unittest
+
+import numpy as np
+from spatialmath import SE3
+from spatialmath import base as sb
 
 from itmobotics_sim.utils.math import vec2SE3
 from itmobotics_sim.utils.robot import EEState, JointState, Motion
 from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
 from itmobotics_sim.pybullet_env.pybullet_robot import PyBulletRobot
-import unittest
-from spatialmath import SE3
-from spatialmath import base as sb
 from itmobotics_sim.utils.controllers import EEPositionToEEVelocityController, EEVelocityToJointVelocityController, JointPositionsController, JointTorquesController, JointVelocitiesController
+
 
 controller_params = {'kp': np.array([12.0, 12.0, 12.0, 2.0, 2.0, 1.0]), 'kd': np.array([1.0, 5.0, 1.0, 0.05, 0.05, 0.05]) * 40}
 
