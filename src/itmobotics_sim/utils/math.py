@@ -1,7 +1,5 @@
 from spatialmath import SE3, SO3, Twist3
 import numpy as np
-import torch as th
-import random
 
 def SE32vec(tf: SE3) -> np.ndarray:
     """ SE32vec
