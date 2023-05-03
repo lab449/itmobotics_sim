@@ -1,11 +1,12 @@
-import numpy as np
-
 import unittest
+
+import numpy as np
 from spatialmath import SE3
 from spatialmath import base as sb
-from itmobotics_sim.utils.math import SE32vec, vec2SE3
 
+from itmobotics_sim.utils.math import SE32vec, vec2SE3
 from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
+
 
 class testUtils(unittest.TestCase):
     def setUp(self):

@@ -1,23 +1,21 @@
 import os, sys
+import time
+import enum
+
+import numpy as np
+from spatialmath import SE3, SO3
+from scipy.spatial.transform import Rotation as R
 
 import pybullet
 import pybullet_utils.bullet_client as bc
 import pybullet_data
-import pybullet_utils.bullet_client as bc
-import numpy as np
-import time
-import enum
-from spatialmath import SE3, SO3
-from scipy.spatial.transform import Rotation as R
-from .pybullet_robot import PyBulletRobot, SimulationException
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import robot
+from itmobotics_sim.pybullet_env.pybullet_robot import PyBulletRobot, SimulationException
+from itmobotics_sim.utils import robot
 
 class GUI_MODE(enum.Enum):
     DIRECT = enum.auto()
     SIMPLE_GUI = enum.auto()
-    
 
 class PyBulletWorld():
     def __init__(self, gui_mode: GUI_MODE = GUI_MODE.SIMPLE_GUI, time_step:float = 1e-3, time_scale:float = 1):

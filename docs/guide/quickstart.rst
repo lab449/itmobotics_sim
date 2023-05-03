@@ -1,0 +1,5 @@
+.. _quickstart:
+
+===============
+Getting Started
+===============

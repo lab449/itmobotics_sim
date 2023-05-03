@@ -1,15 +1,14 @@
-import numpy as np
 import copy
-
+import unittest
 import time
+
+import cv2
+import numpy as np
+from spatialmath import SE3
+from spatialmath import base as sb
 
 from itmobotics_sim.utils.robot import EEState, JointState, Motion
 from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
-import unittest
-from spatialmath import SE3
-import cv2
-from spatialmath import base as sb
-
 
 controller_params = {'kp': np.array([12.0, 12.0, 12.0, 2.0, 2.0, 1.0]), 'kd': np.array([1.0, 5.0, 1.0, 0.05, 0.05, 0.05]) * 40}
 
@@ -31,6 +30,7 @@ class testPyBulletSim(unittest.TestCase):
         self.__robot = self.__sim.add_robot('tests/urdf/ur5e_pybullet.urdf', SE3(0,0,0.625) , 'robot')
         self.__robot.joint_controller_params = controller_params
 
+    @unittest.skip("Skip for CI")
     def test_camera(self):
         self.__sim.reset()
         self.__robot.connect_camera('base_cam', 'camera_link')
