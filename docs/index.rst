@@ -27,6 +27,13 @@ ITMOboticsSIM Docs
   common/robot
   common/controllers
 
+.. toctree::
+  :maxdepth: 1
+  :caption: PyBullet
+
+  env/pb_robot
+  env/pb_world
+  env/urdf
 
 .. Indices and tables
 .. ==================
