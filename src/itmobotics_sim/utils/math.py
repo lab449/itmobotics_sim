@@ -1,11 +1,12 @@
 from spatialmath import SE3, SO3, Twist3
 import numpy as np
 
-def SE32vec(tf: SE3) -> np.ndarray:
-    """ SE3 to vec
 
-    Convert a 4x4 homogeneous matrix to vector representation 
-    
+def SE32vec(tf: SE3) -> np.ndarray:
+    """SE3 to vec
+
+    Convert a 4x4 homogeneous matrix to vector representation
+
     Args:
         tf (SE3): group SE3 from spatialmath library
 
@@ -16,8 +17,9 @@ def SE32vec(tf: SE3) -> np.ndarray:
     result[:3] = tf.t
     return result
 
+
 def vec2SE3(vec: np.ndarray) -> SE3:
-    """ vec to SE3
+    """vec to SE3
 
     Convert vector [x, y, z, alpha, beta, gamma] to 4x4 homogeneous matrix
     belonging to the group SE(3)

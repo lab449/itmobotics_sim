@@ -246,7 +246,7 @@ class EEState:
 
     @staticmethod
     def from_force_torque(force_torque: np.ndarray, ee_link: str, ref_link: str = "world") -> EEState:
-        """ End Effector State
+        """End Effector State
 
         Args:
             force_torque (np.ndarray): force and torque
@@ -265,7 +265,7 @@ class EEState:
         """_summary_
 
         Args:
-            twist (np.ndarray): linear and angular speeds 
+            twist (np.ndarray): linear and angular speeds
             ee_link (str): name of end effector link in urdf
             ref_link (str, optional): name of base link in urdf. Defaults to "world".
 
@@ -390,7 +390,7 @@ class Motion:
             ee_state (EEState): End Effector State
 
         Returns:
-            Motion: 
+            Motion:
         """
         motion = Motion(ee_state.ee_link, joint_state.num_joints)
         motion.ee_state = ee_state
@@ -405,7 +405,7 @@ class Motion:
             joint_state (JointState): JointState
 
         Returns:
-            Motion: 
+            Motion:
         """
         motion = Motion(None, joint_state.num_joints)
         motion.joint_state = joint_state
@@ -419,7 +419,7 @@ class Motion:
             ee_state (EEState): End Effector State
 
         Returns:
-            Motion: 
+            Motion:
         """
         motion = Motion(ee_state.ee_link, None)
         motion.ee_state = ee_state
@@ -501,7 +501,7 @@ class Robot(ABC):
         return self._joint_state.num_joints
 
     def ee_state(self, ee_link: str, ref_frame: str = "world") -> EEState:
-        """ EE state of robot
+        """EE state of robot
 
         Args:
             ee_link (str): name of end effector link in urdf
@@ -519,7 +519,7 @@ class Robot(ABC):
         """
 
         Args:
-            target_motion (Motion): 
+            target_motion (Motion):
             type_ctrl (RobotControllerType):
 
         Returns:
