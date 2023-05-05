@@ -11,6 +11,9 @@ from spatialmath import SE3, SO3
 from itmobotics_sim.utils.robot import RobotControllerType, EEState, JointState, Robot, Motion
 
 class VectorController(ABC):
+    """_summary_
+
+    """
     def __init__(self):
         pass
 
@@ -23,6 +26,14 @@ class VectorController(ABC):
         pass
 
 class MPIDController(VectorController):
+    """_summary_
+
+    Args:
+            P (np.ndarray): P coefficient
+            I (np.ndarray): I coefficient
+            D (np.ndarray): D coefficient
+            dt (float): time step size
+    """
     def __init__(self, P: np.ndarray, I: np.ndarray, D: np.ndarray, dt: float):
         super().__init__()
         self.__P = P
@@ -34,10 +45,20 @@ class MPIDController(VectorController):
         self.__last_err = np.zeros(self.__I.shape[0])
     
     def reset(self):
+        """reset controller internal values
+        """
         self.__integral_value = np.zeros(self.__I.shape[0])
         self.__last_err = np.zeros(self.__I.shape[0])
     
-    def u(self, err: np.ndarray):
+    def u(self, err: np.ndarray) -> float:
+        """calculate control
+
+        Args:
+            err (np.ndarray): error to aim
+
+        Returns:
+            float: 
+        """
         if err.shape[0] != self.__P.shape[0]:
             raise(RuntimeError("Invalid error shape"))
         nonlimit_integral = self.__I @ err*self.__dt + self.__integral_value
@@ -79,12 +100,23 @@ class MPIDController(VectorController):
         self.__D = D        
 
 class ExternalController(ABC):
+    """_summary_
+
+    Args:
+        rob (Robot): _description_
+        robot_controller_type (str): _description_
+    """
     def __init__(self, rob: Robot, robot_controller_type: str):
         self.robot = rob
         self.__robot_controller_type = robot_controller_type
         self.__child_controller = None
 
     def connect_controller(self, controller: ExternalController):
+        """_summary_
+
+        Args:
+            controller (ExternalController): _description_
+        """
         self.__child_controller = controller
 
     @abstractmethod
@@ -92,6 +124,14 @@ class ExternalController(ABC):
         pass
 
     def send_control_to_robot(self, target_motion: Motion) -> bool:
+        """_summary_
+
+        Args:
+            target_motion (Motion): _description_
+
+        Returns:
+            bool: _description_
+        """
         assert isinstance(target_motion, Motion), "Invalid type of target state, expected {:s}, but given {:s}". format(str(Motion), str(type(target_motion)))
         ok = self.calc_control(target_motion)
         if not ok:
@@ -101,6 +141,11 @@ class ExternalController(ABC):
         return self.robot.set_control(target_motion, self.__robot_controller_type)
 
 class SimpleController(ExternalController):
+    """_summary_
+
+    Args:
+        ExternalController (_type_): _description_
+    """
     def __init__(self, rob: Robot, robot_controller_type: str):
         super().__init__(rob, robot_controller_type)
     
@@ -109,10 +154,23 @@ class SimpleController(ExternalController):
 
 
 class EEVelocityToJointVelocityController(ExternalController):
+    """_summary_
+
+    Args:
+            robot (Robot): _description_
+    """
     def __init__(self, robot: Robot):
         super().__init__(robot, RobotControllerType.JOINT_VELOCITIES)
     
     def calc_control(self, target_motion: Motion)-> bool:
+        """_summary_
+
+        Args:
+            target_motion (Motion): _description_
+
+        Returns:
+            bool: _description_
+        """
         target_motion.joint_state.joint_velocities =  np.linalg.pinv(
             self.robot.jacobian(self.robot.joint_state.joint_positions,
             target_motion.ee_state.ee_link,
@@ -121,18 +179,38 @@ class EEVelocityToJointVelocityController(ExternalController):
         return True
 
 class JointTorquesController(SimpleController):
+    """_summary_
+
+    Args:
+        robot (Robot): _description_
+    """
     def __init__(self, robot: Robot):
         super().__init__(robot, RobotControllerType.JOINT_TORQUES)
 
 class JointPositionsController(SimpleController):
+    """_summary_
+
+    Args:
+        robot (Robot): _description_
+    """
     def __init__(self, robot: Robot):
         super().__init__(robot, RobotControllerType.JOINT_POSITIONS)
 
 class JointVelocitiesController(SimpleController):
+    """_summary_
+
+    Args:
+        robot (Robot): _description_
+    """
     def __init__(self, robot: Robot):
         super().__init__(robot, RobotControllerType.JOINT_VELOCITIES)
 
 class EEPositionToEEVelocityController(ExternalController):
+    """_summary_
+
+    Args:
+        robot (Robot): _description_
+    """
     def __init__(self, robot):
         super().__init__(robot, RobotControllerType.TWIST)       
         self.__pid =  MPIDController(10*np.identity(6), 1e-4*np.identity(6), 1e-1*np.identity(6), 1e-3)
@@ -154,6 +232,14 @@ class EEPositionToEEVelocityController(ExternalController):
         return True
 
 class EEForceHybrideToEEVelocityController(ExternalController):
+    """_summary_
+
+    Args:
+            robot (Robot): _description_
+            selected_axis (np.ndarray): _description_
+            stiffnes (np.ndarray): _description_
+            ref_basis (str, optional): _description_. Defaults to 'world'.
+    """
     def __init__(self, robot: Robot, selected_axis: np.ndarray, stiffnes: np.ndarray, ref_basis: str = 'world'):
         super().__init__(robot, RobotControllerType.TWIST)
         self.__pid =  MPIDController(10*np.identity(6), 1e-4*np.identity(6), 1e-1*np.identity(6), 1e-3)
@@ -187,6 +273,14 @@ class EEForceHybrideToEEVelocityController(ExternalController):
         return True
     
     def generate_square_selection_matrix(allow_moves: np.ndarray) ->Tuple[np.ndarray, np.ndarray]:
+        """_summary_
+
+        Args:
+            allow_moves (np.ndarray): _description_
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: _description_
+        """
         T_matrix = np.diag(allow_moves)
         Y_matrix = np.identity(T_matrix.shape[0]) - T_matrix
         return (T_matrix, Y_matrix)
