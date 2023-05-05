@@ -2,30 +2,31 @@ from spatialmath import SE3, SO3, Twist3
 import numpy as np
 
 def SE32vec(tf: SE3) -> np.ndarray:
-    """ SE32vec
+    """ SE3 to vec
 
-    description of function.
-
+    Convert a 4x4 homogeneous matrix to vector representation 
+    
     Args:
-        tf (SE3): _description_
+        tf (SE3): group SE3 from spatialmath library
 
     Returns:
-        np.ndarray: _description_
+        np.ndarray: array [x, y, z, alpha, beta, gamma]
     """
     result = SE3(SO3(tf)).twist().A
     result[:3] = tf.t
     return result
 
 def vec2SE3(vec: np.ndarray) -> SE3:
-    """ vec2SE3
+    """ vec to SE3
 
-    description of function.
+    Convert vector [x, y, z, alpha, beta, gamma] to 4x4 homogeneous matrix
+    belonging to the group SE(3)
 
     Args:
-        vec (np.ndarray): _description_
+        vec (np.ndarray): (6,) np array [x, y, z, alpha, beta, gamma]
 
     Returns:
-        SE3: _description_
+        SE3: group SE3 from spatialmath library
     """
     only_rot_vec = np.copy(vec)
     only_rot_vec[:3] = 0.0
