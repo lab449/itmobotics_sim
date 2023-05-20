@@ -117,6 +117,35 @@ class PyBulletWorld():
 
         return link_state
     
+    def is_collide(self, model_name: str, tollerance: float = 0.001):
+        collision_list = []
+        if model_name in self.__robots:
+            modelA_id = self.__robots[model_name].robot_id
+        elif model_name in self.__objects:
+            modelA_id = self.__objects[model_name]['id']
+        
+        for modelB_name in self.__objects:
+            if modelA_id!= self.__objects[modelB_name]['id']:
+                closest_points = self.__p.getClosestPoints(
+                    modelA_id,
+                    bodyB = self.__objects[modelB_name]['id'],
+                    distance = tollerance
+                )
+                if len(closest_points)>0:
+                    collision_list.append(modelB_name)
+        for modelB_name in self.__robots:
+            if modelA_id!= self.__robots[modelB_name].robot_id:
+                closest_points = self.__p.getClosestPoints(
+                    modelA_id,
+                    bodyB = self.__robots[modelB_name].robot_id,
+                    distance = tollerance
+                )
+                if len(closest_points)>0:
+                    collision_list.append(modelB_name)
+
+        return collision_list
+
+        
 
     def sim_step(self):
         self.__p.stepSimulation()
