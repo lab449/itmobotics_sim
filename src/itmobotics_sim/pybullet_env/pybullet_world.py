@@ -117,7 +117,7 @@ class PyBulletWorld():
 
         return link_state
     
-    def is_collide(self, model_name: str, tollerance: float = 0.001):
+    def is_collide_with(self, model_name: str, tollerance: float = 0.001):
         collision_list = []
         if model_name in self.__robots:
             modelA_id = self.__robots[model_name].robot_id
