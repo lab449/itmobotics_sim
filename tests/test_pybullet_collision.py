@@ -19,12 +19,12 @@ class testPyBulletCollision(unittest.TestCase):
     def test_collision(self):
         self.__sim.reset()
         self.__sim.sim_step()
-        self.assertEqual(len(self.__sim.is_collide('robot')), 0)
+        self.assertEqual(len(self.__sim.is_collide_with('robot')), 0)
         while self.__sim.sim_time<10.0:
             self.__sim.sim_step()
-        print("Collision list: ", self.__sim.is_collide('robot'))
-        self.assertNotEqual(len(self.__sim.is_collide('robot')), 0)
-        self.assertTrue('table' in self.__sim.is_collide('robot'))
+        print("Collision list: ", self.__sim.is_collide_with('robot'))
+        self.assertNotEqual(len(self.__sim.is_collide_with('robot')), 0)
+        self.assertTrue('table' in self.__sim.is_collide_with('robot'))
 
 def main():
     unittest.main(exit=False)

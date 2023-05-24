@@ -117,7 +117,7 @@ class PyBulletWorld():
 
         return link_state
     
-    def is_collide(self, model_name: str, tollerance: float = 0.001):
+    def is_collide_with(self, model_name: str, tollerance: float = 0.001):
         collision_list = []
         if model_name in self.__robots:
             modelA_id = self.__robots[model_name].robot_id
@@ -180,6 +180,14 @@ class PyBulletWorld():
             obj = dict(self.__objects[n])
             if obj["save"]:
                 self.__append_object(n, obj["urdf_filename"], obj["base_tf"], obj["fixed"], obj["save"], obj["scale_size"], obj["enable_ft"])
+    
+    
+    def get_robot(self, robot_name: str) -> PyBulletRobot:
+        return self.__robots[robot_name]
+    
+    @property
+    def robot_names(self) -> list[str]:
+        return list(self.__robots.keys())
 
     @property
     def sim_time(self) -> float:
