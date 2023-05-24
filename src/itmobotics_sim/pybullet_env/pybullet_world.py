@@ -180,6 +180,14 @@ class PyBulletWorld():
             obj = dict(self.__objects[n])
             if obj["save"]:
                 self.__append_object(n, obj["urdf_filename"], obj["base_tf"], obj["fixed"], obj["save"], obj["scale_size"], obj["enable_ft"])
+    
+    
+    def get_robot(self, robot_name: str) -> PyBulletRobot:
+        return self.__robots[robot_name]
+    
+    @property
+    def robot_names(self) -> list[str]:
+        return list(self.__robots.keys())
 
     @property
     def sim_time(self) -> float:
