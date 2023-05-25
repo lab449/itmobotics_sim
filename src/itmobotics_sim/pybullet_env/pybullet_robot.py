@@ -15,6 +15,7 @@ from pybullet_utils import urdfEditor as ed
 from scipy.spatial.transform import Rotation as R
 
 from itmobotics_sim.utils import robot
+from itmobotics_sim.utils import math
 from itmobotics_sim.pybullet_env.urdf_editor import URDFEditor
 
 class SimulationException(Exception):
@@ -24,7 +25,8 @@ class PyBulletRobot(robot.Robot):
     def __init__(self, pybullet_client: bc.BulletClient,
         urdf_filename: str,
         base_transform: SE3 = SE3(),
-        joint_controller_params: dict = None
+        joint_controller_params: dict = None,
+        use_self_collision = True
     ):
         super().__init__(urdf_filename, base_transform)
         self.__p = pybullet_client
@@ -39,6 +41,8 @@ class PyBulletRobot(robot.Robot):
         self.__external_models = {}
         self.__tool_list = []
         self.__cameras = {}
+
+        self.__use_self_collision = use_self_collision
 
         self.__joint_limits: robot.JointLimits = None
         print(self.__p)
@@ -95,6 +99,62 @@ class PyBulletRobot(robot.Robot):
             raise SimulationException('Robot was not initialized')
         assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
         
+        # camera view_matrix:
+        
+        view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras['camera_name'], "world").tf.A)
+        # projection_matrix = math.
+
+        color, depth, segmask = self.__p.getCameraImage(
+            width=self.__cameras[camera_name]['resolution'][1],
+            height=self.__cameras[camera_name]['resolution'][0],
+            viewMatrix=view_matrix,
+            projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
+            renderer=p.ER_BULLET_HARDWARE_OPENGL,
+            flags=p.ER_NO_SEGMENTATION_MASK
+        )[2:5]
+        output = [
+            np.reshape(color, 
+                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., :3],
+            np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
+        ]
+
+        return output
+
+    def get_point_cloud(self, camera_name: str):
+        if not self.__initialized:
+            raise SimulationException('Robot was not initialized')
+        assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
+        
+        # based on https://stackoverflow.com/questions/59128880/getting-world-coordinates-from-opengl-depth-buffer
+
+        # get a depth image
+        # "infinite" depths will have a value close to 1
+        image_arr = pb.getCameraImage(width=width, height=height, viewMatrix=view_matrix, projectionMatrix=proj_matrix)
+        depth = image_arr[3]
+
+        # create a 4x4 transform matrix that goes from pixel coordinates (and depth values) to world coordinates
+        proj_matrix = np.asarray(proj_matrix).reshape([4, 4], order="F")
+        view_matrix = np.asarray(view_matrix).reshape([4, 4], order="F")
+        tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, view_matrix))
+
+        # create a grid with pixel coordinates and depth values
+        y, x = np.mgrid[-1:1:2 / height, -1:1:2 / width]
+        y *= -1.
+        x, y, z = x.reshape(-1), y.reshape(-1), depth.reshape(-1)
+        h = np.ones_like(z)
+
+        pixels = np.stack([x, y, z, h], axis=1)
+        # filter out "infinite" depths
+        pixels = pixels[z < 0.99]
+        pixels[:, 2] = 2 * pixels[:, 2] - 1
+
+        # turn pixels to world coordinates
+        points = np.matmul(tran_pix_world, pixels.T).T
+        points /= points[:, 3: 4]
+        points = points[:, :3]
+
+        return points
+    
         # camera pose
         cam_pos, cam_rot = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[self.__cameras[camera_name]['link']], computeForwardKinematics=1)[4:6]
         cam_rot = np.array(self.__p.getMatrixFromQuaternion(cam_rot)).reshape(3, 3)
@@ -191,7 +251,6 @@ class PyBulletRobot(robot.Robot):
             )
         ))
         js.joint_velocities = np.linalg.pinv(self.jacobian(js.joint_positions, eestate.ee_link, eestate.ref_frame)) @ base_ee_state.twist
-        # print(js)
         self.reset_joint_state(js)
         self._update_joint_state(js)
 
@@ -325,12 +384,15 @@ class PyBulletRobot(robot.Robot):
         self.__base_orient = R.from_matrix(self._base_transform.R).as_quat().tolist() # Quaternioun [x,y,z,w]
         print("Loading urdf ", self._urdf_filename)
 
+        if self.__use_self_collision:
+            flags_bullet = self.__p.URDF_USE_SELF_COLLISION
+
         self.__robot_id = self.__p.loadURDF(
             self._urdf_filename,
             basePosition=self.__base_pose,
             baseOrientation=self.__base_orient,
             useFixedBase=True,
-            flags=self.__p.URDF_USE_SELF_COLLISION
+            flags=flags_bullet
         )
         self.__joint_id_for_link = {}
         self.__actuators_name_list = []
