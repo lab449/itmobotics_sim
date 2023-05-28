@@ -72,8 +72,8 @@ class PyBulletRecorder:
                     mesh_scale = [global_scaling, global_scaling, global_scaling] if link_visual.geometry.scale is None  else link_visual.geometry.scale * global_scaling
 
                     # Get transform
-                    rpy = link.inertial.origin.rpy
-                    xyz = link.inertial.origin.xyz
+                    rpy = link_visual.inertial.origin.rpy
+                    xyz = link_visual.inertial.origin.xyz
 
                     # transform to global abspath
                     mesh_abs_filepath = dir_path + '/' + link_visual.geometry.filename
@@ -116,5 +116,6 @@ class PyBulletRecorder:
             print("[Recorder] Path is None.. not saving")
         else:
             print("[Recorder] Saving state to {}".format(path))
+            print(self.get_formatted_output())
             pickle.dump(self.get_formatted_output(), open(path, 'wb'))
 
