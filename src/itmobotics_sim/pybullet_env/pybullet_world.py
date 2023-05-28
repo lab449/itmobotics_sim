@@ -156,10 +156,10 @@ class PyBulletWorld():
         # Add objects observer
         for robot in self.__robots.values():
             self.__blender_recorder.register_object(robot.robot_id, robot._urdf_filename)
-        for el in self.__objects:
-            self.__blender_recorder.register_object(el["id"], el["urdf_filename"])
+        for obj in self.__objects.values():
+            self.__blender_recorder.register_object(obj["id"], obj["urdf_filename"])
 
-    def save_blender_date(filename) -> None:
+    def save_blender_date(self, filename) -> None:
         if self.__blender_recorder is None:
             print('Blender is not active')
             return
