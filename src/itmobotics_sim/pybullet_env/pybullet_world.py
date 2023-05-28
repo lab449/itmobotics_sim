@@ -12,7 +12,7 @@ import pybullet_data
 
 from itmobotics_sim.pybullet_env.pybullet_robot import PyBulletRobot, SimulationException
 from itmobotics_sim.utils import robot
-from itmobotics_sim.utils import pyBulletSimRecorder
+from itmobotics_sim.utils.pyBulletSimRecorder import PyBulletRecorder
 
 class GUI_MODE(enum.Enum):
     DIRECT = enum.auto()
@@ -31,7 +31,7 @@ class PyBulletWorld():
         
         if gui_mode == GUI_MODE.SIMPLE_GUI:
             self.__pybullet_gui_mode = pybullet.GUI
-            self.__blender_recorder = pyBulletSimRecorder()
+            self.__blender_recorder = PyBulletRecorder()
         self.__p = bc.BulletClient(connection_mode=self.__pybullet_gui_mode)
         
         pybullet.setAdditionalSearchPath(pybullet_data.getDataPath())
