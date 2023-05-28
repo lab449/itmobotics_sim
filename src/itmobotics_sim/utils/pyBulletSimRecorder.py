@@ -72,8 +72,8 @@ class PyBulletRecorder:
                     mesh_scale = [global_scaling, global_scaling, global_scaling] if link_visual.geometry.scale is None  else link_visual.geometry.scale * global_scaling
 
                     # Get transform
-                    rpy = link_visual.inertial.origin.rpy
-                    xyz = link_visual.inertial.origin.xyz
+                    rpy = link_visual.origin.rpy
+                    xyz = link_visual.origin.xyz
 
                     # transform to global abspath
                     mesh_abs_filepath = dir_path + '/' + link_visual.geometry.filename
