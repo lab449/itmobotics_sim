@@ -17,6 +17,6 @@ def main():
     while sim.sim_time<10.0:
         sim.sim_step()
         ee_state = robot.ee_state('iiwa_link_ee')
-    sim.save_blender_date('blender_scene.pickle')
+    sim.save_blender_date('blender_scene.pkl')
 if __name__ == "__main__":
     main()
