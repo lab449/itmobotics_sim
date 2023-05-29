@@ -41,7 +41,7 @@ class PyBulletRobot(robot.Robot):
         self.__cameras = {}
 
         self.__joint_limits: robot.JointLimits = None
-        print(self.__p)
+        # print(self.__p)
         self.reset()
 
         self.__joint_controller_params = {
@@ -190,8 +190,16 @@ class PyBulletRobot(robot.Robot):
                 upperLimits = list(self.joint_limits.limit_positions[1])
             )
         ))
+        wrapped_js = np.zeros(js.joint_positions.shape)
+        for i in range(js.joint_positions.shape[0]):
+            if js.joint_positions[i]<self.joint_limits.limit_positions[0][i]:
+                wrapped_js[i] =  js.joint_positions[i]+ np.pi*2
+            elif js.joint_positions[i]>self.joint_limits.limit_positions[1][i]:
+                wrapped_js[i] =  js.joint_positions[i]- np.pi*2
+            else:
+                wrapped_js[i] =  js.joint_positions[i]
+        js.joint_positions = wrapped_js
         js.joint_velocities = np.linalg.pinv(self.jacobian(js.joint_positions, eestate.ee_link, eestate.ref_frame)) @ base_ee_state.twist
-        # print(js)
         self.reset_joint_state(js)
         self._update_joint_state(js)
 
