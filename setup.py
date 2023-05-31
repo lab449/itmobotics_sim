@@ -38,7 +38,8 @@ setuptools.setup(
         "scipy >= 1.7.0",
         "pybullet >= 3.1.9",
         "sympy",
-        "spatialmath-python>=0.11"
+        "spatialmath-python>=0.11",
+        "urdf-parser-py"
    ],
    extras_require={
         "docs": DOCS_REQUIRE,
