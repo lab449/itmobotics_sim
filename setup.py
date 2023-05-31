@@ -11,7 +11,7 @@ DOCS_REQUIRE = [
 
 setuptools.setup(
     name='itmobotics_sim',
-    version='0.0.5',
+    version='0.0.6',
     author='TexnoMann',
     author_email='texnoman@itmo.ru',
     description='Package with pybullet robots simulation',
@@ -27,7 +27,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     license='MIT',
-    download_url = 'https://github.com/ITMORobotics/itmobotics_sim/archive/refs/tags/v0.0.4.tar.gz',
+    download_url = 'https://github.com/ITMORobotics/itmobotics_sim/archive/refs/tags/v0.0.6.tar.gz',
     include_package_data=True,
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
