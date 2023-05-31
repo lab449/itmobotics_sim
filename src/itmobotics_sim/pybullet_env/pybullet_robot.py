@@ -24,7 +24,8 @@ class PyBulletRobot(robot.Robot):
     def __init__(self, pybullet_client: bc.BulletClient,
         urdf_filename: str,
         base_transform: SE3 = SE3(),
-        joint_controller_params: dict = None
+        joint_controller_params: dict = None,
+        additional_path: list[str] = [],
     ):
         super().__init__(urdf_filename, base_transform)
         self.__p = pybullet_client
@@ -36,6 +37,7 @@ class PyBulletRobot(robot.Robot):
         self.__num_actuators = 0
         self.__joint_id_for_link = {}
 
+        self.__additional_path = additional_path
         self.__external_models = {}
         self.__tool_list = []
         self.__cameras = {}
@@ -60,13 +62,14 @@ class PyBulletRobot(robot.Robot):
     def connect_tool(self, tool_name: str, external_urdf_filename: str, root_link: str, tf: SE3 = SE3(), save = False):
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
-        
-        main_editor = URDFEditor(self._urdf_filename)
-        child_editor = URDFEditor(external_urdf_filename)
 
+        main_editor = URDFEditor(self._urdf_filename, self.__additional_path)
+        child_editor = URDFEditor(external_urdf_filename, self.__additional_path)
+        self._urdf_filename = main_editor.urdf_filename
+        
         main_editor.joinURDF(child_editor, root_link, tf.A)
 
-        head = os.path.split(external_urdf_filename)[0]
+        head = os.path.split(self._urdf_filename)[0]
         newname = str(uuid.uuid4()) + '_tmp'+ '.urdf'
         newpath = os.path.join(head, newname)
         self._urdf_filename = newpath

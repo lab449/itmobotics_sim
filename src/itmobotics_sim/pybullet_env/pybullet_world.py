@@ -28,17 +28,18 @@ class PyBulletWorld():
 
         self.__pybullet_gui_mode = pybullet.DIRECT
         self.__blender_recorder = None
-        
+
         if gui_mode == GUI_MODE.SIMPLE_GUI:
             self.__pybullet_gui_mode = pybullet.GUI
             self.__blender_recorder = PyBulletRecorder()
         self.__p = bc.BulletClient(connection_mode=self.__pybullet_gui_mode)
-        
-        pybullet.setAdditionalSearchPath(pybullet_data.getDataPath())
+
+        self.__p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        self.additional_paths = [pybullet_data.getDataPath()]
 
         self.__objects = {}
         self.reset()
-    
+
     def __del__(self):
         print("Pybullet disconnecting")
         self.__p.disconnect()
@@ -48,7 +49,7 @@ class PyBulletWorld():
     def add_robot(self, urdf_filename: str, base_transform: SE3 = SE3(), name: str = 'robot') -> robot.Robot:
         if name in self.__robots.keys():
             raise SimulationException('A robot with that name ({:s}) already exists'.format(name))
-        self.__robots[name] = PyBulletRobot(self.__p, urdf_filename, base_transform)
+        self.__robots[name] = PyBulletRobot(self.__p, urdf_filename, base_transform, additional_path = self.additional_paths)
         return self.__robots[name]
     
     def add_object(self, name:str, urdf_filename: str, base_transform: SE3 = SE3(), fixed: bool = True, save: bool = False, scale_size: float = 1.0):
@@ -201,7 +202,10 @@ class PyBulletWorld():
             if obj["save"]:
                 self.__append_object(n, obj["urdf_filename"], obj["base_tf"], obj["fixed"], obj["save"], obj["scale_size"], obj["enable_ft"])
     
-    
+    def add_additional_search_path(self, path: str) -> None:
+        self.__p.setAdditionalSearchPath(path)
+        self.additional_paths.append(path)
+
     def get_robot(self, robot_name: str) -> PyBulletRobot:
         return self.__robots[robot_name]
     
