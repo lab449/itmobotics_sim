@@ -117,7 +117,7 @@ class PyBulletRobot(robot.Robot):
         )[2:5]
         output = [
             np.reshape(color, 
-                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., :3],
+                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., -2::-1],
             np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
         ]
 
@@ -352,7 +352,7 @@ class PyBulletRobot(robot.Robot):
 
         self.__base_pose = self._base_transform.t.tolist() # World position [x,y,z]
         self.__base_orient = R.from_matrix(self._base_transform.R).as_quat().tolist() # Quaternioun [x,y,z,w]
-        print("Loading urdf ", self._urdf_filename)
+        # print("Loading urdf ", self._urdf_filename)
 
         self.__robot_id = self.__p.loadURDF(
             self._urdf_filename,
@@ -370,7 +370,7 @@ class PyBulletRobot(robot.Robot):
         for _id in range(self.__p.getNumJoints(self.__robot_id)):
             # print(p.getJointInfo(self.__robot_id, _id))
             joint_info = self.__p.getJointInfo(self.__robot_id, _id)
-            print(joint_info)
+            # print(joint_info)
             _name = joint_info[12].decode('UTF-8')
             if joint_info[4] != -1:
                 self.__actuators_name_list.append(_name)
