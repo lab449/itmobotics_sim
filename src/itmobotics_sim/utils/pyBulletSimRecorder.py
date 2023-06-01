@@ -69,17 +69,17 @@ class PyBulletRecorder:
                 for i, link_visual in enumerate(link.visuals):
                     # TODO: check that scaling is correct if there is scale property
                     ext_scale = 1.0
-                    if 'dae' in link_visual.geometry.filename:
-                        ext_scale = 1e-3
                     mesh_scale = [global_scaling*ext_scale, global_scaling*ext_scale, global_scaling*ext_scale] if link_visual.geometry.scale is None  else [s * global_scaling * ext_scale for s in link_visual.geometry.scale] 
 
                     # Get transform TODO: Add normal checking that link does not have origin specification
                     # try:
                     try:
                         rpy = link_visual.origin.rpy
-                        xyz = link_visual.origin.xyz
                     except:
                         rpy = [0,0,0]
+                    try:
+                        xyz = link_visual.origin.xyz
+                    except:
                         xyz = [0,0,0]
 
                     # transform to global abspath
@@ -112,7 +112,8 @@ class PyBulletRecorder:
         for link in self.links:
             out_frames = []
             for state in self.states:
-                out_frames.append(state[link.name] )
+                if link.name in state:
+                    out_frames.append(state[link.name] )
             retval[link.name] = {
                 'type': 'mesh',
                 'mesh_path': link.mesh_path,
