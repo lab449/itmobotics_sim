@@ -181,7 +181,7 @@ class PyBulletRobot(robot.Robot):
         orientation = tuple(r2q(base_ee_state.tf.R,order='xyzs'))
         self._update_joint_state(self._joint_state)
         js = robot.JointState(self.__num_actuators)
-
+        limit_range = self.joint_limits.limit_positions[1]-self.joint_limits.limit_positions[0]
         while True:
             bad_solution = False
             new_proposed_q = np.array(list(
@@ -206,8 +206,11 @@ class PyBulletRobot(robot.Robot):
                 if new_proposed_q[i]<self.joint_limits.limit_positions[0][i] or new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
                     bad_solution = True
             if bad_solution:
+                
                 for i in range(new_proposed_q.shape[0]):
-                    new_proposed_q[i] = np.random.uniform(self.joint_limits.limit_positions[0][i]+0.01, self.joint_limits.limit_positions[1][i]-0.01)
+                    new_proposed_q[i] = np.random.uniform(
+                        limit_range[i]/2.0+self.joint_limits.limit_positions[0][i]-0.5,
+                        limit_range[i]/2.0+self.joint_limits.limit_positions[0][i]+0.5)
                 js.joint_positions = new_proposed_q
                 self.reset_joint_state(js)
             else:
