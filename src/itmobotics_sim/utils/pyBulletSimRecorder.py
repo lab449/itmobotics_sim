@@ -67,13 +67,20 @@ class PyBulletRecorder:
             link_id = link_id_map[link.name]
             if len(link.visuals) > 0:
                 for i, link_visual in enumerate(link.visuals):
-
                     # TODO: check that scaling is correct if there is scale property
-                    mesh_scale = [global_scaling, global_scaling, global_scaling] if link_visual.geometry.scale is None  else link_visual.geometry.scale * global_scaling
+                    ext_scale = 1.0
+                    if 'dae' in link_visual.geometry.filename:
+                        ext_scale = 1e-3
+                    mesh_scale = [global_scaling*ext_scale, global_scaling*ext_scale, global_scaling*ext_scale] if link_visual.geometry.scale is None  else [s * global_scaling * ext_scale for s in link_visual.geometry.scale] 
 
-                    # Get transform
-                    rpy = link_visual.origin.rpy
-                    xyz = link_visual.origin.xyz
+                    # Get transform TODO: Add normal checking that link does not have origin specification
+                    # try:
+                    try:
+                        rpy = link_visual.origin.rpy
+                        xyz = link_visual.origin.xyz
+                    except:
+                        rpy = [0,0,0]
+                        xyz = [0,0,0]
 
                     # transform to global abspath
                     mesh_abs_filepath = dir_path + '/' + link_visual.geometry.filename
@@ -103,11 +110,14 @@ class PyBulletRecorder:
     def get_formatted_output(self):
         retval = {}
         for link in self.links:
+            out_frames = []
+            for state in self.states:
+                out_frames.append(state[link.name] )
             retval[link.name] = {
                 'type': 'mesh',
                 'mesh_path': link.mesh_path,
                 'mesh_scale': link.mesh_scale,
-                'frames': [state[link.name] for state in self.states]
+                'frames': out_frames
             }
         return retval
 
@@ -116,6 +126,6 @@ class PyBulletRecorder:
             print("[Recorder] Path is None.. not saving")
         else:
             print("[Recorder] Saving state to {}".format(path))
-            print(self.get_formatted_output())
+            # print(self.get_formatted_output())
             pickle.dump(self.get_formatted_output(), open(path, 'wb'))
 
