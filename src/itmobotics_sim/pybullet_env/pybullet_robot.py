@@ -160,6 +160,10 @@ class PyBulletRobot(robot.Robot):
     def reset_joint_state(self, jstate: robot.JointState):
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
+        assert self._joint_state.num_joints == jstate.num_joints,\
+            "Can not set joint state, because given state has invalid size, expected {}, but given {}".format(
+                self._joint_state.num_joints, jstate.num_joints
+            )
         self._joint_state = jstate
         for i in range(self.__num_actuators):
             self.__p.resetJointState(self.__robot_id, self.__actuators_id_list[i], self._joint_state.joint_positions[i], self._joint_state.joint_velocities[i])
@@ -176,32 +180,43 @@ class PyBulletRobot(robot.Robot):
             base_ee_state.tf = in_base_tf @ base_ee_state.tf
             base_ee_state.twist = np.kron(np.eye(2,dtype=int), in_base_tf.R) @ base_ee_state.twist
 
-         # In PyBullet quaternioun described as xyzw, but in spatialmath wxyz
         position = tuple(base_ee_state.tf.t)
         orientation = tuple(r2q(base_ee_state.tf.R,order='xyzs'))
-
+        self._update_joint_state(self._joint_state)
         js = robot.JointState(self.__num_actuators)
-        js.joint_positions = np.array(list(
-            self.__p.calculateInverseKinematics(
-                self.__robot_id, self.__joint_id_for_link[eestate.ee_link],
-                position,
-                orientation,
-                maxNumIterations=1000,
-                residualThreshold=1e-6,
-                restPoses = list(self._joint_state.joint_positions),
-                lowerLimits = list(self.joint_limits.limit_positions[0]),
-                upperLimits = list(self.joint_limits.limit_positions[1])
-            )
-        ))
-        wrapped_js = np.zeros(js.joint_positions.shape)
-        for i in range(js.joint_positions.shape[0]):
-            if js.joint_positions[i]<self.joint_limits.limit_positions[0][i]:
-                wrapped_js[i] =  js.joint_positions[i]+ np.pi*2
-            elif js.joint_positions[i]>self.joint_limits.limit_positions[1][i]:
-                wrapped_js[i] =  js.joint_positions[i]- np.pi*2
+
+        while True:
+            bad_solution = False
+            new_proposed_q = np.array(list(
+                self.__p.calculateInverseKinematics(
+                    self.__robot_id, self.__joint_id_for_link[eestate.ee_link],
+                    position,
+                    orientation,
+                    maxNumIterations=1000,
+                    residualThreshold=1e-6,
+                    restPoses = list(self._joint_state.joint_positions),
+                    lowerLimits = list(self.joint_limits.limit_positions[0]),
+                    upperLimits = list(self.joint_limits.limit_positions[1])
+                )
+            ))
+            for i in range(new_proposed_q.shape[0]):
+                if new_proposed_q[i]<self.joint_limits.limit_positions[0][i]:
+                    new_proposed_q[i] =  new_proposed_q[i]+ np.pi*2
+                elif new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
+                    new_proposed_q[i] =  new_proposed_q[i]- np.pi*2
+                else:
+                    new_proposed_q[i] =  new_proposed_q[i]
+                if new_proposed_q[i]<self.joint_limits.limit_positions[0][i] or new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
+                    bad_solution = True
+            if bad_solution:
+                for i in range(new_proposed_q.shape[0]):
+                    new_proposed_q[i] = np.random.uniform(self.joint_limits.limit_positions[0][i]+0.01, self.joint_limits.limit_positions[1][i]-0.01)
+                js.joint_positions = new_proposed_q
+                self.reset_joint_state(js)
             else:
-                wrapped_js[i] =  js.joint_positions[i]
-        js.joint_positions = wrapped_js
+                break
+
+        js.joint_positions = new_proposed_q
         js.joint_velocities = np.linalg.pinv(self.jacobian(js.joint_positions, eestate.ee_link, eestate.ref_frame)) @ base_ee_state.twist
         self.reset_joint_state(js)
         self._update_joint_state(js)
