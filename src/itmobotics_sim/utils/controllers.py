@@ -204,6 +204,43 @@ class EEVelocityToJointVelocityController(ExternalController):
         return True
 
 
+class EELocalVelocityToJointVelocityController(ExternalController):
+    """_summary_
+
+    Args:
+            robot (Robot): _description_
+    """
+
+    def __init__(self, robot: Robot):
+        super().__init__(robot, RobotControllerType.JOINT_VELOCITIES)
+
+    def calc_control(self, target_motion: Motion) -> bool:
+        """_summary_
+
+        Args:
+            target_motion (Motion): _description_
+
+        Returns:
+            bool: _description_
+        """
+        target_motion.ee_state.twist = np.kron(np.eye(2),
+            self.robot.ee_state(
+                target_motion.ee_state.ee_link,
+                target_motion.ee_state.ref_frame
+            ).tf.R.T) @ target_motion.ee_state.twist
+
+        target_motion.joint_state.joint_velocities = (
+            np.linalg.pinv(
+                self.robot.jacobian(
+                    self.robot.joint_state.joint_positions,
+                    target_motion.ee_state.ee_link,
+                    target_motion.ee_state.ref_frame,
+                )
+            )
+            @ target_motion.ee_state.twist
+        )
+        return True
+
 class JointTorquesController(SimpleController):
     """_summary_
 
