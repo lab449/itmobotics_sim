@@ -423,6 +423,10 @@ class PyBulletRobot(robot.Robot):
     def joint_limits(self) -> robot.JointLimits:
         return self.__joint_limits
     
+    @property
+    def urdf_filename(self) -> str:
+        return self._urdf_filename
+    
     def link_id(self, link_name: str) -> int:
         return self.__joint_id_for_link[link_name]
     
