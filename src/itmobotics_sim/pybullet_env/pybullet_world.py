@@ -31,7 +31,10 @@ class PyBulletWorld():
 
         if gui_mode == GUI_MODE.SIMPLE_GUI:
             self.__pybullet_gui_mode = pybullet.GUI
-            self.__blender_recorder = PyBulletRecorder()
+        
+        self.__blender_recorder = PyBulletRecorder()
+        self.__recording = False
+
         self.__p = bc.BulletClient(connection_mode=self.__pybullet_gui_mode)
 
         self.__p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -149,31 +152,14 @@ class PyBulletWorld():
 
         return collision_list
 
-    def register_objects_for_record(self) -> None:
-        if self.__blender_recorder is None:
-            print('Blender is not active')
-            return
-
-        # Add objects observer
-        for robot in self.__robots.values():
-            self.__blender_recorder.register_object(robot.robot_id, robot._urdf_filename)
-        for obj in self.__objects.values():
-            self.__blender_recorder.register_object(obj["id"], obj["urdf_filename"])
-
-    def save_scene_record(self, filename) -> None:
-        if self.__blender_recorder is None:
-            print('Blender is not active')
-            return
-
-        self.__blender_recorder.save(filename)
-
     def sim_step(self):
         self.__p.stepSimulation()
         self.__sim_time += self.__time_step
+        if self.__recording:
+            self.__blender_recorder.add_keyframe()
         if self.__pybullet_gui_mode == pybullet.GUI:
             dt = max(self.__time_step/self.__time_scale - (self.__last_real_time - time.time()), 0)
             time.sleep(dt)
-        self.__blender_recorder.add_keyframe()
         self.__last_real_time = time.time()
     
     @property
@@ -208,6 +194,29 @@ class PyBulletWorld():
 
     def get_robot(self, robot_name: str) -> PyBulletRobot:
         return self.__robots[robot_name]
+
+    def register_objects_for_record(self):
+        if self.__blender_recorder is None:
+            print('Blender is not active')
+            return
+
+        # Add objects observer
+        for robot in self.__robots.values():
+            self.__blender_recorder.register_object(robot.robot_id, robot.urdf_filename)
+        for obj in self.__objects.values():
+            self.__blender_recorder.register_object(obj["id"], obj["urdf_filename"])
+
+    def save_scene_record(self, filename):
+        if self.__blender_recorder is None:
+            print('Blender is not active')
+            return
+
+        self.__blender_recorder.save(filename)
+    
+    def start_record(self):
+        self.__recording = True
+    def stop_record(self):
+        self.__recording = False
     
     @property
     def robot_names(self) -> list[str]:
