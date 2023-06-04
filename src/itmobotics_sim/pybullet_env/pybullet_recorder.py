@@ -72,7 +72,6 @@ class PyBulletRecorder:
                     mesh_scale = [global_scaling*ext_scale, global_scaling*ext_scale, global_scaling*ext_scale] if link_visual.geometry.scale is None  else [s * global_scaling * ext_scale for s in link_visual.geometry.scale] 
 
                     # Get transform TODO: Add normal checking that link does not have origin specification
-                    # try:
                     try:
                         rpy = link_visual.origin.rpy
                     except:

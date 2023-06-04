@@ -14,10 +14,10 @@ def main():
     sim.add_object('table', 'tests/urdf/table.urdf')
     robot = sim.add_robot('tests/urdf/iiwa_airhockey.urdf', SE3(0,-0.2,0.625) , 'robot')
     # robot2 = sim.add_robot('tests/urdf/ur5e_pybullet2.urdf', SE3(0,0.2,0.625) , 'robot2')
-    sim.registrate_blender_objects()
+    sim.register_objects_for_record()
     while sim.sim_time<10.0:
         sim.sim_step()
         # ee_state = robot.ee_state('iiwa_1/striker_mallet_tip')
-    sim.save_blender_date('blender_scene.pkl')
+    sim.save_scene_record('blender_scene.pkl')
 if __name__ == "__main__":
     main()

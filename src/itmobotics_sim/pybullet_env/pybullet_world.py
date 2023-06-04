@@ -12,7 +12,7 @@ import pybullet_data
 
 from itmobotics_sim.pybullet_env.pybullet_robot import PyBulletRobot, SimulationException
 from itmobotics_sim.utils import robot
-from itmobotics_sim.utils.pyBulletSimRecorder import PyBulletRecorder
+from itmobotics_sim.pybullet_env.pybullet_recorder import PyBulletRecorder
 
 class GUI_MODE(enum.Enum):
     DIRECT = enum.auto()
@@ -149,7 +149,7 @@ class PyBulletWorld():
 
         return collision_list
 
-    def registrate_blender_objects(self) -> None:
+    def register_objects_for_record(self) -> None:
         if self.__blender_recorder is None:
             print('Blender is not active')
             return
@@ -160,7 +160,7 @@ class PyBulletWorld():
         for obj in self.__objects.values():
             self.__blender_recorder.register_object(obj["id"], obj["urdf_filename"])
 
-    def save_blender_date(self, filename) -> None:
+    def save_scene_record(self, filename) -> None:
         if self.__blender_recorder is None:
             print('Blender is not active')
             return
@@ -173,7 +173,7 @@ class PyBulletWorld():
         if self.__pybullet_gui_mode == pybullet.GUI:
             dt = max(self.__time_step/self.__time_scale - (self.__last_real_time - time.time()), 0)
             time.sleep(dt)
-            self.__blender_recorder.add_keyframe()
+        self.__blender_recorder.add_keyframe()
         self.__last_real_time = time.time()
     
     @property
