@@ -311,10 +311,10 @@ class EEForceHybrideToEEVelocityController(ExternalController):
             robot (Robot): _description_
             selected_axis (np.ndarray): _description_
             stiffnes (np.ndarray): _description_
-            ref_basis (str, optional): _description_. Defaults to 'world'.
+            ref_basis (str, optional): _description_. Defaults to 'global'.
     """
 
-    def __init__(self, robot: Robot, selected_axis: np.ndarray, stiffnes: np.ndarray, ref_basis: str = "world"):
+    def __init__(self, robot: Robot, selected_axis: np.ndarray, stiffnes: np.ndarray, ref_basis: str = "global"):
         super().__init__(robot, RobotControllerType.TWIST)
         self.__pid = MPIDController(10 * np.identity(6), 1e-4 * np.identity(6), 1e-1 * np.identity(6), 1e-3)
         self.__ref_basis = ref_basis

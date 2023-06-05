@@ -12,7 +12,7 @@ from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
 
 class testPyBulletCollision(unittest.TestCase):
     def setUp(self):
-        self.__sim = PyBulletWorld(gui_mode = GUI_MODE.SIMPLE_GUI, time_step = 0.01, time_scale=1)
+        self.__sim = PyBulletWorld(gui_mode = GUI_MODE.DIRECT, time_step = 0.01, time_scale=1)
         self.__sim.add_object('table', 'tests/urdf/table.urdf', save=True)
         self.__robot = self.__sim.add_robot('tests/urdf/iiwa14_pybullet.urdf', SE3(0,0,0.725) , 'robot')
 
