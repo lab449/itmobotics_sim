@@ -49,10 +49,10 @@ class PyBulletWorld():
         del self.__p
         del self.__robots
     
-    def add_robot(self, urdf_filename: str, base_transform: SE3 = SE3(), name: str = 'robot') -> robot.Robot:
+    def add_robot(self, urdf_filename: str, base_transform: SE3 = SE3(), name: str = 'robot', fixed: bool = True, flags: int or list = 0) -> robot.Robot:
         if name in self.__robots.keys():
             raise SimulationException('A robot with that name ({:s}) already exists'.format(name))
-        self.__robots[name] = PyBulletRobot(self.__p, urdf_filename, base_transform, additional_path = self.additional_paths)
+        self.__robots[name] = PyBulletRobot(self.__p, urdf_filename, base_transform, additional_path = self.additional_paths, fixed_base=fixed, load_flags=flags)
         return self.__robots[name]
     
     def add_object(self, name:str, urdf_filename: str, base_transform: SE3 = SE3(), fixed: bool = True, save: bool = False, scale_size: float = 1.0):
@@ -86,9 +86,14 @@ class PyBulletWorld():
         self.__p.removeBody(self.__objects[name]["id"])
         del self.__objects[name]
 
+    def remove_robot(self, name: str):
+        assert name in self.__robots, "Undefined object: {:s}".format(name)
+        self.__p.removeBody(self.__robots[name].robot_id)
+        del self.__robots[name]
+
     def link_state(self, model_name: str, link: str, reference_model_name: str, reference_link: str) -> robot.EEState:
         link_state = robot.EEState.from_tf(SE3(0.0, 0.0, 0.0), ee_link=link, ref_link=reference_link)
-        if link != 'world':
+        if link != 'global':
             try:
                 if model_name in self.__objects:
                     pr = self.__p.getLinkState(self.__objects[model_name]["id"], self.__objects[model_name]["link_id"][link], computeLinkVelocity=1)
@@ -105,7 +110,7 @@ class PyBulletWorld():
             link_state.twist = np.concatenate([link_frame_pos_vel, link_frame_rot_vel])
             link_state.force_torque = np.array(pb_joint_state[2])
             
-        if reference_model_name == "" or reference_link == "world":
+        if reference_model_name == "" or reference_link == "global":
             return link_state
 
         if reference_model_name in self.__objects:
