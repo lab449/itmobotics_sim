@@ -174,7 +174,7 @@ class PyBulletRobot(robot.Robot):
         for i in range(self.__num_actuators):
             self.__p.resetJointState(self.__robot_id, self.__actuators_id_list[i], self._joint_state.joint_positions[i], self._joint_state.joint_velocities[i])
     
-    def reset_ee_state(self, eestate: robot.EEState):
+    def reset_ee_state(self, eestate: robot.EEState, initial_state: robot.JointState = None):
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
         ref_frame = eestate.ref_frame
@@ -188,11 +188,12 @@ class PyBulletRobot(robot.Robot):
 
         position = tuple(base_ee_state.tf.t)
         orientation = tuple(r2q(base_ee_state.tf.R,order='xyzs'))
-        self._update_joint_state(self._joint_state)
         js = robot.JointState(self.__num_actuators)
+        self._update_joint_state(js)
+        new_proposed_q = np.zeros(js.joint_positions.shape)
         limit_range = self.joint_limits.limit_positions[1]-self.joint_limits.limit_positions[0]
-        while True:
-            bad_solution = False
+        if not initial_state is None:
+            self.reset_joint_state(initial_state)
             new_proposed_q = np.array(list(
                 self.__p.calculateInverseKinematics(
                     self.__robot_id, self.__joint_id_for_link[eestate.ee_link],
@@ -200,30 +201,50 @@ class PyBulletRobot(robot.Robot):
                     orientation,
                     maxNumIterations=1000,
                     residualThreshold=1e-6,
-                    restPoses = list(self._joint_state.joint_positions),
+                    restPoses = list(initial_state.joint_positions),
                     lowerLimits = list(self.joint_limits.limit_positions[0]),
                     upperLimits = list(self.joint_limits.limit_positions[1])
                 )
             ))
-            for i in range(new_proposed_q.shape[0]):
-                if new_proposed_q[i]<self.joint_limits.limit_positions[0][i]:
-                    new_proposed_q[i] =  new_proposed_q[i]+ np.pi*2
-                elif new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
-                    new_proposed_q[i] =  new_proposed_q[i]- np.pi*2
-                else:
-                    new_proposed_q[i] =  new_proposed_q[i]
-                if new_proposed_q[i]<self.joint_limits.limit_positions[0][i] or new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
-                    bad_solution = True
-            if bad_solution:
-                
+        else:
+            while True:
+                bad_solution = False
                 for i in range(new_proposed_q.shape[0]):
                     new_proposed_q[i] = np.random.uniform(
                         limit_range[i]/2.0+self.joint_limits.limit_positions[0][i]-0.5,
                         limit_range[i]/2.0+self.joint_limits.limit_positions[0][i]+0.5)
                 js.joint_positions = new_proposed_q
                 self.reset_joint_state(js)
-            else:
-                break
+                new_proposed_q = np.array(list(
+                    self.__p.calculateInverseKinematics(
+                        self.__robot_id, self.__joint_id_for_link[eestate.ee_link],
+                        position,
+                        orientation,
+                        maxNumIterations=1000,
+                        residualThreshold=1e-6,
+                        restPoses = list(new_proposed_q),
+                        lowerLimits = list(self.joint_limits.limit_positions[0]),
+                        upperLimits = list(self.joint_limits.limit_positions[1])
+                    )
+                ))
+                for i in range(new_proposed_q.shape[0]):
+                    if new_proposed_q[i]<self.joint_limits.limit_positions[0][i]:
+                        new_proposed_q[i] =  new_proposed_q[i]+ np.pi*2
+                    elif new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
+                        new_proposed_q[i] =  new_proposed_q[i]- np.pi*2
+                    else:
+                        new_proposed_q[i] =  new_proposed_q[i]
+                    if new_proposed_q[i]<self.joint_limits.limit_positions[0][i] or new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
+                        bad_solution = True
+                if bad_solution:
+                    for i in range(new_proposed_q.shape[0]):
+                        new_proposed_q[i] = np.random.uniform(
+                            limit_range[i]/2.0+self.joint_limits.limit_positions[0][i]-0.5,
+                            limit_range[i]/2.0+self.joint_limits.limit_positions[0][i]+0.5)
+                    js.joint_positions = new_proposed_q
+                    self.reset_joint_state(js)
+                else:
+                    break
 
         js.joint_positions = new_proposed_q
         js.joint_velocities = np.linalg.pinv(self.jacobian(js.joint_positions, eestate.ee_link, eestate.ref_frame)) @ base_ee_state.twist
@@ -243,8 +264,8 @@ class PyBulletRobot(robot.Robot):
                 list(joint_pose), list(np.zeros(joint_pose.shape)),
                 list(np.zeros(joint_pose.shape))
             )
-            Jv = np.asarray(jac_t)[:, -6:]
-            Jw = np.asarray(jac_r)[:, -6:]
+            Jv = np.asarray(jac_t)[:, -self.__num_actuators:]
+            Jw = np.asarray(jac_r)[:, -self.__num_actuators:]
         if ref_frame =='global':
             Jv = self._base_transform.R @ Jv
             Jw = self._base_transform.R @ Jw

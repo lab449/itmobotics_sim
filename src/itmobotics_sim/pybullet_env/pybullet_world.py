@@ -173,6 +173,7 @@ class PyBulletWorld():
     
     
     def reset(self):
+
         for r in self.__robots.keys():
             self.__robots[r].clear_id()
 
@@ -192,6 +193,8 @@ class PyBulletWorld():
             obj = dict(self.__objects[n])
             if obj["save"]:
                 self.__append_object(n, obj["urdf_filename"], obj["base_tf"], obj["fixed"], obj["save"], obj["scale_size"], obj["enable_ft"])
+        
+        self.__blender_recorder.reset()
     
     def add_additional_search_path(self, path: str) -> None:
         self.__p.setAdditionalSearchPath(path)
@@ -201,6 +204,7 @@ class PyBulletWorld():
         return self.__robots[robot_name]
 
     def register_objects_for_record(self):
+        self.__blender_recorder.reset()
         if self.__blender_recorder is None:
             print('Blender is not active')
             return
@@ -211,12 +215,13 @@ class PyBulletWorld():
         for obj in self.__objects.values():
             self.__blender_recorder.register_object(obj["id"], obj["urdf_filename"])
 
-    def save_scene_record(self, filename):
+    def save_scene_record(self, filename) -> bool:
         if self.__blender_recorder is None:
             print('Blender is not active')
-            return
+            return False
 
         self.__blender_recorder.save(filename)
+        return True
     
     def start_record(self):
         self.__recording = True
