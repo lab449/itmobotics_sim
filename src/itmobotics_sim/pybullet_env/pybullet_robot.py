@@ -15,7 +15,8 @@ from pybullet_utils import urdfEditor as ed
 from scipy.spatial.transform import Rotation as R
 
 from itmobotics_sim.utils import robot
-from itmobotics_sim.utils import math
+from itmobotics_sim.utils import math, converters
+
 from itmobotics_sim.pybullet_env.urdf_editor import URDFEditor
 
 class SimulationException(Exception):
@@ -85,11 +86,19 @@ class PyBulletRobot(robot.Robot):
         self.reset_joint_state(jj)
         self.__reset_tools()
     
-    def connect_camera(self, name: str, link: str, resolution: tuple = (1280, 1024), fov: float = 1000.0, clip: tuple = (0.001, 5.0)):
-        proj_matrix = self.__p.computeProjectionMatrixFOV(fov, resolution[0]/resolution[1], clip[0], clip[1])
+    def connect_camera(self, name: str, link: str, resolution: tuple = (1280, 1024), clip: tuple = (0.001, 5.0), intrinsic_matrix: np.ndarray = None):
+        if intrinsic_matrix is None:
+            default_fov_x = resolution[0]/2.0*1.2
+            default_fov_y = resolution[1]/2.0*1.2
+            default_cx = resolution[0]/2
+            default_cy = resolution[1]/2
+            intrinsic_matrix = np.array([[default_fov_x,           0 , default_cx],
+                                        [0,            default_fov_y , default_cy],
+                                        [0,                        0 ,         1 ]])
 
+        projection_matrix = converters.intrinsic2GLprojection_matrix(intrinsic_matrix)
         self.__cameras[name] = {
-            'proj_matrix': proj_matrix,
+            'projection_matrix': projection_matrix,
             'link': link,
             'resolution': resolution
         }
@@ -101,8 +110,7 @@ class PyBulletRobot(robot.Robot):
         
         # camera view_matrix:
         
-        view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras['camera_name'], "world").tf.A)
-        # projection_matrix = math.
+        view_matrix = converters.extrinsicGLview_matrix(self.ee_state(self.__cameras['camera_name'], "world").tf.A)
 
         color, depth, segmask = self.__p.getCameraImage(
             width=self.__cameras[camera_name]['resolution'][1],
