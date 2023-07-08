@@ -1,23 +1,22 @@
 import os, sys
+import time
+import enum
+
+import numpy as np
+from spatialmath import SE3, SO3
+from scipy.spatial.transform import Rotation as R
 
 import pybullet
 import pybullet_utils.bullet_client as bc
 import pybullet_data
-import pybullet_utils.bullet_client as bc
-import numpy as np
-import time
-import enum
-from spatialmath import SE3, SO3
-from scipy.spatial.transform import Rotation as R
-from .pybullet_robot import PyBulletRobot, SimulationException
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import robot
+from itmobotics_sim.pybullet_env.pybullet_robot import PyBulletRobot, SimulationException
+from itmobotics_sim.utils import robot
+from itmobotics_sim.pybullet_env.pybullet_recorder import PyBulletRecorder
 
 class GUI_MODE(enum.Enum):
     DIRECT = enum.auto()
     SIMPLE_GUI = enum.auto()
-    
 
 class PyBulletWorld():
     def __init__(self, gui_mode: GUI_MODE = GUI_MODE.SIMPLE_GUI, time_step:float = 1e-3, time_scale:float = 1):
@@ -28,26 +27,32 @@ class PyBulletWorld():
         self.__robots = {}
 
         self.__pybullet_gui_mode = pybullet.DIRECT
-        
+        self.__blender_recorder = None
+
         if gui_mode == GUI_MODE.SIMPLE_GUI:
             self.__pybullet_gui_mode = pybullet.GUI
-        self.__p = bc.BulletClient(connection_mode=self.__pybullet_gui_mode)
         
-        pybullet.setAdditionalSearchPath(pybullet_data.getDataPath())
+        self.__blender_recorder = PyBulletRecorder()
+        self.__recording = False
+
+        self.__p = bc.BulletClient(connection_mode=self.__pybullet_gui_mode)
+
+        self.__p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        self.additional_paths = [pybullet_data.getDataPath()]
 
         self.__objects = {}
         self.reset()
-    
+
     def __del__(self):
         print("Pybullet disconnecting")
         self.__p.disconnect()
         del self.__p
         del self.__robots
     
-    def add_robot(self, urdf_filename: str, base_transform: SE3 = SE3(), name: str = 'robot') -> robot.Robot:
+    def add_robot(self, urdf_filename: str, base_transform: SE3 = SE3(), name: str = 'robot', fixed: bool = True, flags: int or list = 0) -> robot.Robot:
         if name in self.__robots.keys():
             raise SimulationException('A robot with that name ({:s}) already exists'.format(name))
-        self.__robots[name] = PyBulletRobot(self.__p, urdf_filename, base_transform)
+        self.__robots[name] = PyBulletRobot(self.__p, urdf_filename, base_transform, additional_path = self.additional_paths, fixed_base=fixed, load_flags=flags)
         return self.__robots[name]
     
     def add_object(self, name:str, urdf_filename: str, base_transform: SE3 = SE3(), fixed: bool = True, save: bool = False, scale_size: float = 1.0):
@@ -81,9 +86,14 @@ class PyBulletWorld():
         self.__p.removeBody(self.__objects[name]["id"])
         del self.__objects[name]
 
+    def remove_robot(self, name: str):
+        assert name in self.__robots, "Undefined object: {:s}".format(name)
+        self.__p.removeBody(self.__robots[name].robot_id)
+        del self.__robots[name]
+
     def link_state(self, model_name: str, link: str, reference_model_name: str, reference_link: str) -> robot.EEState:
         link_state = robot.EEState.from_tf(SE3(0.0, 0.0, 0.0), ee_link=link, ref_link=reference_link)
-        if link != 'world':
+        if link != 'global':
             try:
                 if model_name in self.__objects:
                     pr = self.__p.getLinkState(self.__objects[model_name]["id"], self.__objects[model_name]["link_id"][link], computeLinkVelocity=1)
@@ -100,7 +110,7 @@ class PyBulletWorld():
             link_state.twist = np.concatenate([link_frame_pos_vel, link_frame_rot_vel])
             link_state.force_torque = np.array(pb_joint_state[2])
             
-        if reference_model_name == "" or reference_link == "world":
+        if reference_model_name == "" or reference_link == "global":
             return link_state
 
         if reference_model_name in self.__objects:
@@ -119,15 +129,51 @@ class PyBulletWorld():
 
         return link_state
     
+    def is_collide_with(self, model_name: str, tollerance: float = 0.001):
+        collision_list = []
+        if model_name in self.__robots:
+            modelA_id = self.__robots[model_name].robot_id
+        elif model_name in self.__objects:
+            modelA_id = self.__objects[model_name]['id']
+        
+        for modelB_name in self.__objects:
+            if modelA_id!= self.__objects[modelB_name]['id']:
+                closest_points = self.__p.getClosestPoints(
+                    modelA_id,
+                    bodyB = self.__objects[modelB_name]['id'],
+                    distance = tollerance
+                )
+                if len(closest_points)>0:
+                    collision_list.append(modelB_name)
+        for modelB_name in self.__robots:
+            if modelA_id!= self.__robots[modelB_name].robot_id:
+                closest_points = self.__p.getClosestPoints(
+                    modelA_id,
+                    bodyB = self.__robots[modelB_name].robot_id,
+                    distance = tollerance
+                )
+                if len(closest_points)>0:
+                    collision_list.append(modelB_name)
+
+        return collision_list
 
     def sim_step(self):
         self.__p.stepSimulation()
         self.__sim_time += self.__time_step
+        if self.__recording:
+            self.__blender_recorder.add_keyframe()
         if self.__pybullet_gui_mode == pybullet.GUI:
-            time.sleep(self.__time_step/self.__time_scale)
+            dt = max(self.__time_step/self.__time_scale - (self.__last_real_time - time.time()), 0)
+            time.sleep(dt)
+        self.__last_real_time = time.time()
+    
+    @property
+    def time_step(self):
+        return self.__time_step
     
     
     def reset(self):
+
         for r in self.__robots.keys():
             self.__robots[r].clear_id()
 
@@ -141,11 +187,50 @@ class PyBulletWorld():
             self.__robots[r].reset()
 
         self.__sim_time = 0.0
+        self.__last_real_time = time.time()
         
         for n in self.__objects:
             obj = dict(self.__objects[n])
             if obj["save"]:
                 self.__append_object(n, obj["urdf_filename"], obj["base_tf"], obj["fixed"], obj["save"], obj["scale_size"], obj["enable_ft"])
+        
+        self.__blender_recorder.reset()
+    
+    def add_additional_search_path(self, path: str) -> None:
+        self.__p.setAdditionalSearchPath(path)
+        self.additional_paths.append(path)
+
+    def get_robot(self, robot_name: str) -> PyBulletRobot:
+        return self.__robots[robot_name]
+
+    def register_objects_for_record(self):
+        self.__blender_recorder.reset()
+        if self.__blender_recorder is None:
+            print('Blender is not active')
+            return
+
+        # Add objects observer
+        for robot in self.__robots.values():
+            self.__blender_recorder.register_object(robot.robot_id, robot.urdf_filename)
+        for obj in self.__objects.values():
+            self.__blender_recorder.register_object(obj["id"], obj["urdf_filename"])
+
+    def save_scene_record(self, filename) -> bool:
+        if self.__blender_recorder is None:
+            print('Blender is not active')
+            return False
+
+        self.__blender_recorder.save(filename)
+        return True
+    
+    def start_record(self):
+        self.__recording = True
+    def stop_record(self):
+        self.__recording = False
+    
+    @property
+    def robot_names(self) -> list[str]:
+        return list(self.__robots.keys())
 
     @property
     def sim_time(self) -> float:

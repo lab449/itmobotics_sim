@@ -4,3 +4,5 @@ numpy
 scipy
 spatialmath-python
 pytest
+opencv-python
+urdf-parser-py

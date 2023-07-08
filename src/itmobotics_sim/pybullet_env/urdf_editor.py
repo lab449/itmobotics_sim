@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pathlib
 from typing import Tuple
 import xml.etree.ElementTree
 import numpy as np
@@ -7,10 +8,10 @@ from scipy.spatial.transform import Rotation as R
 
 
 class URDFEditor:
-    def __init__(self, urdf_filename: str):
-        self.__urdf_filename = urdf_filename
+    def __init__(self, urdf_filename: str, additional_path: list[str] = []):
+        self.urdf_filename = self._find_urdf(urdf_filename, additional_path)
         # Open original file
-        self.__et = xml.etree.ElementTree.parse(self.__urdf_filename)
+        self.__et = xml.etree.ElementTree.parse(self.urdf_filename)
 
         self.__xmlJointTemplate = """<?xml version="1.0"?>
         <joint name="%(name)s" type="%(type)s">
@@ -20,7 +21,7 @@ class URDFEditor:
         </joint>
         """
         self.__connections, self.__root_link = self.__parse()
-    
+
     def __parse(self)-> Tuple[dict, str]:
         link_list = []
         root = self.__et.getroot()
@@ -96,8 +97,15 @@ class URDFEditor:
         # print(joint_xml_string)
         new_joint_xml = xml.etree.ElementTree.fromstring(joint_xml_string)
         self.__et.getroot().append(new_joint_xml)
-    
+
     def save(self, filename: str):
         with open(filename, 'wb') as f:
             self.__et.write(f, encoding='utf-8')
-        
+
+    @staticmethod
+    def _find_urdf(urdf_filename: str, additional_path: list[str]) -> str:
+        additional_path = [''] + additional_path
+        for path in (pathlib.Path(path, urdf_filename) for path in additional_path):
+            if path.is_file():
+                return str(path)
+        return ''

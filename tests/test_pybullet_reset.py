@@ -1,14 +1,15 @@
 import os
 import sys
-import numpy as np
 import copy
+import unittest
+
+import numpy as np
+from spatialmath import SE3
+from spatialmath import base as sb
 
 from itmobotics_sim.utils.robot import EEState, JointState, Motion
 from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
 from itmobotics_sim.pybullet_env.pybullet_robot import PyBulletRobot
-import unittest
-from spatialmath import SE3
-from spatialmath import base as sb
 from itmobotics_sim.utils.controllers import EEPositionToEEVelocityController, EEVelocityToJointVelocityController, JointTorquesController
 
 
@@ -30,7 +31,7 @@ class testPyBulletRobot(unittest.TestCase):
         self.__sim = PyBulletWorld(gui_mode = GUI_MODE.DIRECT, time_step = 0.01)
         self.__sim.add_object('hole_round', 'tests/urdf/hole_round.urdf', base_transform = SE3(0.0, 0.0, 0.675), fixed = True, save = True)
         self.__sim.add_object('table', 'tests/urdf/table.urdf', fixed =True, save=True)
-        self.__robot = self.__sim.add_robot('tests/urdf/ur5e_pybullet.urdf', SE3(0,-0.3,0.625), 'robot1')
+        self.__robot = self.__sim.add_robot('tests/urdf/ur5e_pybullet.urdf', SE3(0,-0.3,0.625) @SE3.Rz(np.pi), 'robot1')
         self.__robot2 = self.__sim.add_robot('tests/urdf/ur5e_pybullet.urdf', SE3(0.0,0.3,0.625), 'robot2')
 
         self.__controller_speed = EEVelocityToJointVelocityController(self.__robot)

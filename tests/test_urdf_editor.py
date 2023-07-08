@@ -1,9 +1,9 @@
 import os
 import sys
-import numpy as np
 import copy
-
 import unittest
+
+import numpy as np
 from spatialmath import SE3
 from spatialmath import base as sb
 

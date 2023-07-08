@@ -3,9 +3,15 @@ import setuptools
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+DOCS_REQUIRE = [
+    "sphinx~=6.2.1",
+    "sphinx-autodoc-typehints~=1.23.0",
+    "sphinx-rtd-theme~=1.2.0",
+]
+
 setuptools.setup(
     name='itmobotics_sim',
-    version='0.0.4',
+    version='0.0.6',
     author='TexnoMann',
     author_email='texnoman@itmo.ru',
     description='Package with pybullet robots simulation',
@@ -21,7 +27,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     license='MIT',
-    download_url = 'https://github.com/ITMORobotics/itmobotics_sim/archive/refs/tags/v0.0.4.tar.gz',
+    download_url = 'https://github.com/ITMORobotics/itmobotics_sim/archive/refs/tags/v0.0.6.tar.gz',
     include_package_data=True,
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
@@ -32,6 +38,10 @@ setuptools.setup(
         "scipy >= 1.7.0",
         "pybullet >= 3.1.9",
         "sympy",
-        "spatialmath-python>=0.11"
-   ]
+        "spatialmath-python>=0.11",
+        "urdf-parser-py"
+   ],
+   extras_require={
+        "docs": DOCS_REQUIRE,
+    },
 )

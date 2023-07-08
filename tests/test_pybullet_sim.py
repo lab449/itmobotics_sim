@@ -1,13 +1,13 @@
-import numpy as np
 import copy
-
 import time
+import unittest
+
+import numpy as np
+from spatialmath import SE3
+from spatialmath import base as sb
 
 from itmobotics_sim.utils.robot import EEState, JointState, Motion
 from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
-import unittest
-from spatialmath import SE3
-from spatialmath import base as sb
 
 
 controller_params = {'kp': np.array([12.0, 12.0, 12.0, 2.0, 2.0, 1.0, 1.0]), 'kd': np.array([1.0, 5.0, 1.0, 0.05, 0.05, 0.05, 0.05]) * 40}
