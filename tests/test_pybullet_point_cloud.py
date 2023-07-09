@@ -30,14 +30,14 @@ class testPyBulletSim(unittest.TestCase):
         self.__robot = self.__sim.add_robot('tests/urdf/ur5e_pybullet.urdf', SE3(0,0,0.625) , 'robot')
         self.__robot.joint_controller_params = controller_params
 
-    @unittest.skip("Skip for CI")
+    # @unittest.skip("Skip for CI")
     def test_camera(self):
         self.__sim.reset()
         self.__robot.connect_camera('base_cam', 'camera_link')
         while self.__sim.sim_time<10.0:
             self.__sim.sim_step()
             joint_state = self.__robot.joint_state
-            img, _ = self.__robot.get_image('base_cam')
+            img, _ = self.__robot.get_point_cloud('base_cam')
             img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             cv2.imshow('out', img_rgb)
             cv2.waitKey(1)
