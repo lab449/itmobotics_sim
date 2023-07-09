@@ -101,7 +101,7 @@ class PyBulletRobot(robot.Robot):
         
         # camera view_matrix:
         
-        view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras['camera_name'], "world").tf.A)
+        view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name], "world").tf.A)
         # projection_matrix = math.
 
         color, depth, segmask = self.__p.getCameraImage(
@@ -129,15 +129,27 @@ class PyBulletRobot(robot.Robot):
 
         # get a depth image
         # "infinite" depths will have a value close to 1
-        image_arr = pb.getCameraImage(width=width, height=height, viewMatrix=view_matrix, projectionMatrix=proj_matrix)
-        depth = image_arr[3]
+        # image_arr = pb.getCameraImage(width=width, height=height, viewMatrix=view_matrix, projectionMatrix=proj_matrix)
+        # depth = image_arr[3]
+        color, depth, segmask = self.__p.getCameraImage(
+            width=self.__cameras[camera_name]['resolution'][1],
+            height=self.__cameras[camera_name]['resolution'][0],
+            viewMatrix=view_matrix,
+            projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
+            renderer=p.ER_BULLET_HARDWARE_OPENGL,
+            flags=p.ER_NO_SEGMENTATION_MASK
+        )[2:5]
 
         # create a 4x4 transform matrix that goes from pixel coordinates (and depth values) to world coordinates
-        proj_matrix = np.asarray(proj_matrix).reshape([4, 4], order="F")
+        proj_matrix = np.asarray(self.__cameras[camera_name]['proj_matrix']).reshape([4, 4], order="F")
+        # view_matrix = EEState(self.__cameras[camera_name]['link'])
+        view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name], "world").tf.A)
         view_matrix = np.asarray(view_matrix).reshape([4, 4], order="F")
         tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, view_matrix))
 
         # create a grid with pixel coordinates and depth values
+        width=self.__cameras[camera_name]['resolution'][1]
+        height=self.__cameras[camera_name]['resolution'][0]
         y, x = np.mgrid[-1:1:2 / height, -1:1:2 / width]
         y *= -1.
         x, y, z = x.reshape(-1), y.reshape(-1), depth.reshape(-1)
@@ -154,31 +166,6 @@ class PyBulletRobot(robot.Robot):
         points = points[:, :3]
 
         return points
-    
-        # camera pose
-        cam_pos, cam_rot = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[self.__cameras[camera_name]['link']], computeForwardKinematics=1)[4:6]
-        cam_rot = np.array(self.__p.getMatrixFromQuaternion(cam_rot)).reshape(3, 3)
-        # rendering
-        camera_position = cam_pos
-        up_vector = cam_rot.dot([0, 0.001, 0])
-        target = cam_pos + cam_rot.dot([0, 0, 0.001])
-        viewMat = self.__p.computeViewMatrix(camera_position, target, up_vector)
-
-        color, depth, segmask = self.__p.getCameraImage(
-            width=self.__cameras[camera_name]['resolution'][1],
-            height=self.__cameras[camera_name]['resolution'][0],
-            viewMatrix=viewMat,
-            projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
-            renderer=p.ER_BULLET_HARDWARE_OPENGL,
-            flags=p.ER_NO_SEGMENTATION_MASK
-        )[2:5]
-        output = [
-            np.reshape(color, 
-                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., :3],
-            np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
-        ]
-
-        return output
     
     def remove_tool(self, tool_name):
         if not self.__initialized:
