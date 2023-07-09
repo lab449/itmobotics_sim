@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<robot name="plug">
+  <link name="plug_link">
+    <contact>
+      <!-- <lateral_friction value="1.0"/>
+      <rolling_friction value="0.5"/>
+      <contact_cfm value="0.0"/>
+      <contact_erp value="1.0"/> -->
+    </contact>
+    <inertial>
+      <origin rpy="0 0 0" xyz="-0.0225 0.0225 0"/>
+        <mass value="0.1"/>
+        <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <origin rpy="-1.570796 0 0" xyz="0 0 0.0225"/>
+      <geometry>
+			  <mesh filename="meshes/plug/plug.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="orange">
+        <color rgba="1 0.6 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="-1.570796 0 0" xyz="0 0 0.0225"/>
+      <geometry>
+	 	    <mesh filename="meshes/plug/plug.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="plug_target_link">
+    <inertial>
+      <mass value="0" />
+      <origin rpy="0 0 0" xyz="0.0 0.0 0.0" />
+      <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0" />
+    </inertial>
+  </link>
+  <joint name="plug_link-plug_target_link" type="fixed">
+    <parent link="plug_link"/>
+    <child link="plug_target_link"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
+  </joint>
+</robot>
