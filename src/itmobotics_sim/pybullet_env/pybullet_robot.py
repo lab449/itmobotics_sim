@@ -177,6 +177,7 @@ class PyBulletRobot(robot.Robot):
             flags=p.ER_NO_SEGMENTATION_MASK
         )[2:5]
 
+        
         view_matrix = np.asarray(viewMat).reshape([4, 4], order="F")
 
         proj_matrix = np.asarray(self.__cameras[camera_name]['proj_matrix']).reshape([4, 4], order="F")        
@@ -192,7 +193,9 @@ class PyBulletRobot(robot.Robot):
 
         pixels = np.stack([x, y, z, h], axis=1)
         # filter out "infinite" depths
+        # print(pixels.shape)
         pixels = pixels[z < 0.99]
+        # print(pixels.shape)
         pixels[:, 2] = 2 * pixels[:, 2] - 1
 
         # turn pixels to world coordinates

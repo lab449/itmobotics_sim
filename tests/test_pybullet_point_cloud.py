@@ -27,7 +27,7 @@ target_motion2 = copy.deepcopy(target_motion)
 
 class testPyBulletSim(unittest.TestCase):
     def setUp(self):
-        self.__sim = PyBulletWorld(gui_mode = GUI_MODE.SIMPLE_GUI, time_step = 0.01, time_scale=1)
+        self.__sim = PyBulletWorld(gui_mode = GUI_MODE.DIRECT, time_step = 0.01, time_scale=1)
         self.__sim.add_object('table', 'tests/urdf/table.urdf', save=True)
         self.__sim.add_object('peg', 'tests/urdf/peg_round.urdf',SE3(0.5,0,0.65), save=True)
 
@@ -47,10 +47,10 @@ class testPyBulletSim(unittest.TestCase):
         vis.add_geometry(geometry)
         while self.__sim.sim_time<10.0:
             self.__sim.sim_step()
-            img = self.__robot.get_point_cloud('base_cam')
-            # print(img.shape)
-            geometry.points =  o3d.utility.Vector3dVector(img)
+            points = self.__robot.get_point_cloud('base_cam')
+            geometry.points =  o3d.utility.Vector3dVector(points)
             geometry.remove_non_finite_points(remove_nan=True, remove_infinite=True)
+            print(geometry)
             vis.update_geometry(geometry)
             vis.poll_events()
             vis.update_renderer()
