@@ -17,6 +17,8 @@ from scipy.spatial.transform import Rotation as R
 from itmobotics_sim.utils import robot
 from itmobotics_sim.utils import math
 from itmobotics_sim.pybullet_env.urdf_editor import URDFEditor
+import open3d as o3d
+
 
 class SimulationException(Exception):
     pass
@@ -93,58 +95,91 @@ class PyBulletRobot(robot.Robot):
             'link': link,
             'resolution': resolution
         }
-        
+
     def get_image(self, camera_name: str):
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
         assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
         
-        # camera view_matrix:
-        
-        view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name], "world").tf.A)
-        # projection_matrix = math.
+        # camera pose
+        cam_pos, cam_rot = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[self.__cameras[camera_name]['link']], computeForwardKinematics=1)[4:6]
+        cam_rot = np.array(self.__p.getMatrixFromQuaternion(cam_rot)).reshape(3, 3)
+        # rendering
+        camera_position = cam_pos
+        up_vector = cam_rot.dot([0, 0.001, 0])
+        target = cam_pos + cam_rot.dot([0, 0, 0.001])
+        viewMat = self.__p.computeViewMatrix(camera_position, target, up_vector)
 
         color, depth, segmask = self.__p.getCameraImage(
             width=self.__cameras[camera_name]['resolution'][1],
             height=self.__cameras[camera_name]['resolution'][0],
-            viewMatrix=view_matrix,
+            viewMatrix=viewMat,
             projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
             renderer=p.ER_BULLET_HARDWARE_OPENGL,
             flags=p.ER_NO_SEGMENTATION_MASK
         )[2:5]
         output = [
             np.reshape(color, 
-                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., :3],
+                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., -2::-1],
             np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
         ]
 
         return output
+        
+    # def get_image(self, camera_name: str):
+    #     if not self.__initialized:
+    #         raise SimulationException('Robot was not initialized')
+    #     assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
+        
+    #     # camera view_matrix:
+        
+    #     view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name], "world").tf.A)
+    #     # projection_matrix = math.
+
+    #     color, depth, segmask = self.__p.getCameraImage(
+    #         width=self.__cameras[camera_name]['resolution'][1],
+    #         height=self.__cameras[camera_name]['resolution'][0],
+    #         viewMatrix=view_matrix,
+    #         projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
+    #         renderer=p.ER_BULLET_HARDWARE_OPENGL,
+    #         flags=p.ER_NO_SEGMENTATION_MASK
+    #     )[2:5]
+    #     output = [
+    #         np.reshape(color, 
+    #             (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., :3],
+    #         np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
+    #     ]
+
+    #     return output
 
     def get_point_cloud(self, camera_name: str):
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
         assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
         
-        # based on https://stackoverflow.com/questions/59128880/getting-world-coordinates-from-opengl-depth-buffer
+        # camera pose
+        cam_pos, cam_rot = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[self.__cameras[camera_name]['link']], computeForwardKinematics=1)[4:6]
+        cam_rot = np.array(self.__p.getMatrixFromQuaternion(cam_rot)).reshape(3, 3)
+        # rendering
+        camera_position = cam_pos
+        up_vector = cam_rot.dot([0, 0.001, 0])
+        target = cam_pos + cam_rot.dot([0, 0, 0.001])
+        viewMat = np.asarray(self.__p.computeViewMatrix(camera_position, target, up_vector))
+        # view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name]["link"], "world").tf.A)
+        
 
-        # get a depth image
-        # "infinite" depths will have a value close to 1
-        # image_arr = pb.getCameraImage(width=width, height=height, viewMatrix=view_matrix, projectionMatrix=proj_matrix)
-        # depth = image_arr[3]
         color, depth, segmask = self.__p.getCameraImage(
             width=self.__cameras[camera_name]['resolution'][1],
             height=self.__cameras[camera_name]['resolution'][0],
-            viewMatrix=view_matrix,
+            viewMatrix=viewMat,
             projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
             renderer=p.ER_BULLET_HARDWARE_OPENGL,
             flags=p.ER_NO_SEGMENTATION_MASK
         )[2:5]
 
-        # create a 4x4 transform matrix that goes from pixel coordinates (and depth values) to world coordinates
-        proj_matrix = np.asarray(self.__cameras[camera_name]['proj_matrix']).reshape([4, 4], order="F")
-        # view_matrix = EEState(self.__cameras[camera_name]['link'])
-        view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name], "world").tf.A)
-        view_matrix = np.asarray(view_matrix).reshape([4, 4], order="F")
+        view_matrix = np.asarray(viewMat).reshape([4, 4], order="F")
+
+        proj_matrix = np.asarray(self.__cameras[camera_name]['proj_matrix']).reshape([4, 4], order="F")        
         tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, view_matrix))
 
         # create a grid with pixel coordinates and depth values
@@ -166,6 +201,66 @@ class PyBulletRobot(robot.Robot):
         points = points[:, :3]
 
         return points
+
+
+        # output = [
+        #     np.reshape(color, 
+        #         (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., -2::-1],
+        #     np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
+        # ]
+
+        # return output
+
+    # def get_point_cloud(self, camera_name: str):
+    #     if not self.__initialized:
+    #         raise SimulationException('Robot was not initialized')
+    #     assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
+        
+    #     # based on https://stackoverflow.com/questions/59128880/getting-world-coordinates-from-opengl-depth-buffer
+
+    #     # get a depth image
+    #     # "infinite" depths will have a value close to 1
+    #     # image_arr = pb.getCameraImage(width=width, height=height, viewMatrix=view_matrix, projectionMatrix=proj_matrix)
+    #     # depth = image_arr[3]
+    #     view_matrix = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name]["link"], "world").tf.A)
+    #     view_matrix = np.asarray(view_matrix).reshape([4, 4], order="F")
+
+    #     color, depth, segmask = self.__p.getCameraImage(
+    #         width=self.__cameras[camera_name]['resolution'][1],
+    #         height=self.__cameras[camera_name]['resolution'][0],
+    #         viewMatrix=view_matrix,
+    #         projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
+    #         renderer=p.ER_BULLET_HARDWARE_OPENGL,
+    #         flags=p.ER_NO_SEGMENTATION_MASK
+    #     )[2:5]
+
+    #     print(depth)
+
+    #     # create a 4x4 transform matrix that goes from pixel coordinates (and depth values) to world coordinates
+    #     proj_matrix = np.asarray(self.__cameras[camera_name]['proj_matrix']).reshape([4, 4], order="F")
+    #     # view_matrix = EEState(self.__cameras[camera_name]['link'])
+        
+    #     tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, view_matrix))
+
+    #     # create a grid with pixel coordinates and depth values
+    #     width=self.__cameras[camera_name]['resolution'][1]
+    #     height=self.__cameras[camera_name]['resolution'][0]
+    #     y, x = np.mgrid[-1:1:2 / height, -1:1:2 / width]
+    #     y *= -1.
+    #     x, y, z = x.reshape(-1), y.reshape(-1), depth.reshape(-1)
+    #     h = np.ones_like(z)
+
+    #     pixels = np.stack([x, y, z, h], axis=1)
+    #     # filter out "infinite" depths
+    #     pixels = pixels[z < 0.99]
+    #     pixels[:, 2] = 2 * pixels[:, 2] - 1
+
+    #     # turn pixels to world coordinates
+    #     points = np.matmul(tran_pix_world, pixels.T).T
+    #     points /= points[:, 3: 4]
+    #     points = points[:, :3]
+
+    #     return points
     
     def remove_tool(self, tool_name):
         if not self.__initialized:
