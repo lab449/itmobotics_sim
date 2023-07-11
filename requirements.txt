@@ -5,4 +5,3 @@ scipy
 spatialmath-python
 pytest
 opencv-python
-open3d

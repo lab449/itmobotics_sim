@@ -9,7 +9,6 @@ from spatialmath import base as sb
 
 from itmobotics_sim.utils.robot import EEState, JointState, Motion
 from itmobotics_sim.pybullet_env.pybullet_world import PyBulletWorld, GUI_MODE
-import open3d as o3d
 from itmobotics_sim.utils.controllers import EEPositionToEEVelocityController, EEVelocityToJointVelocityController
 
 

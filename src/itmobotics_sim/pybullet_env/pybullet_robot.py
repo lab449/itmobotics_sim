@@ -17,7 +17,6 @@ from scipy.spatial.transform import Rotation as R
 from itmobotics_sim.utils import robot
 from itmobotics_sim.utils import math
 from itmobotics_sim.pybullet_env.urdf_editor import URDFEditor
-import open3d as o3d
 
 
 class SimulationException(Exception):
