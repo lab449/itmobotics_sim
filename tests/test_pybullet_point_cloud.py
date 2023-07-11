@@ -41,17 +41,13 @@ class testPyBulletSim(unittest.TestCase):
         self.__robot.connect_camera('base_cam', 'camera_link')
         self.__robot.reset_joint_state(JointState.from_position(test_joint_pose))
 
-        geometry = o3d.geometry.PointCloud()
         while self.__sim.sim_time<10.0:
             self.__sim.sim_step()
             self.__controller_ee_pose.send_control_to_robot(target_motion)
 
-            points, img = self.__robot.get_point_cloud('base_cam')
-            geometry.points =  o3d.utility.Vector3dVector(points)
-            if len(geometry.points) > 0:
-                # cv2.imwrite(f"res/ex_{self.__sim.sim_time}.png",img)
-                # o3d.io.write_point_cloud(f"res/ex_{self.__sim.sim_time}.pcd",geometry)
-                print(geometry)
+            points = self.__robot.get_point_cloud('base_cam')
+            print(len(points))
+
 
 
 def main():

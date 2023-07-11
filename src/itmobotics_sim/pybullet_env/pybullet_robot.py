@@ -126,14 +126,14 @@ class PyBulletRobot(robot.Robot):
         
         viewMat = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name]["link"], "world").tf.A)
 
-        color, depth, segmask = self.__p.getCameraImage(
+        depth = self.__p.getCameraImage(
             width=self.__cameras[camera_name]['resolution'][1],
             height=self.__cameras[camera_name]['resolution'][0],
             viewMatrix=viewMat,
             projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
             renderer=p.ER_BULLET_HARDWARE_OPENGL,
             flags=p.ER_NO_SEGMENTATION_MASK
-        )[2:5]
+        )[3]
 
         view_matrix = np.asarray(viewMat).reshape([4, 4], order="F")
 
@@ -158,7 +158,7 @@ class PyBulletRobot(robot.Robot):
         points /= points[:, 3: 4]
         points = points[:, :3]
 
-        return [points, np.reshape(color, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., :3]]
+        return points
     
     def remove_tool(self, tool_name):
         if not self.__initialized:
