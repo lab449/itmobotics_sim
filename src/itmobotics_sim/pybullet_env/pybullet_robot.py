@@ -134,7 +134,9 @@ class PyBulletRobot(robot.Robot):
             flags=p.ER_NO_SEGMENTATION_MASK
         )[3]
 
-        view_matrix = np.asarray(viewMat).reshape([4, 4], order="F")
+
+        # view_matrix = np.asarray(viewMat).reshape([4, 4], order="F")
+        view_matrix = np.eye(4)
 
         proj_matrix = np.asarray(self.__cameras[camera_name]['proj_matrix']).reshape([4, 4], order="F")        
         tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, view_matrix))
