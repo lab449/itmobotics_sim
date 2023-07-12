@@ -136,10 +136,13 @@ class PyBulletRobot(robot.Robot):
 
 
         # view_matrix = np.asarray(viewMat).reshape([4, 4], order="F")
-        view_matrix = np.eye(4)
+        Tc = np.array([[1,   0,    0,  0],
+                    [0,  -1,    0,  0],
+                    [0,   0,   -1,  0],
+                    [0,   0,    0,  1]]).reshape(4,4)
 
         proj_matrix = np.asarray(self.__cameras[camera_name]['proj_matrix']).reshape([4, 4], order="F")        
-        tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, view_matrix))
+        tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, Tc))
 
         # create a grid with pixel coordinates and depth values
         width=self.__cameras[camera_name]['resolution'][1]
