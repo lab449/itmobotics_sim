@@ -15,6 +15,8 @@ from pybullet_utils import urdfEditor as ed
 from scipy.spatial.transform import Rotation as R
 
 from itmobotics_sim.utils import robot
+from itmobotics_sim.utils import math, converters
+
 from itmobotics_sim.pybullet_env.urdf_editor import URDFEditor
 
 class SimulationException(Exception):
@@ -26,6 +28,7 @@ class PyBulletRobot(robot.Robot):
         urdf_filename: str,
         base_transform: SE3 = SE3(),
         joint_controller_params: dict = None,
+        use_self_collision = True
         additional_path: list[str] = [],
         load_flags: int or list = -1,
         fixed_base: bool = True
@@ -45,6 +48,7 @@ class PyBulletRobot(robot.Robot):
         self.__tool_list = []
         self.__cameras = {}
 
+        self.__use_self_collision = use_self_collision
         self.__load_flags = load_flags
         self.__fixed_base = fixed_base
 
@@ -90,11 +94,19 @@ class PyBulletRobot(robot.Robot):
         self.reset_joint_state(jj)
         self.__reset_tools()
     
-    def connect_camera(self, name: str, link: str, resolution: tuple = (1280, 1024), fov: float = 1000.0, clip: tuple = (0.001, 5.0)):
-        proj_matrix = self.__p.computeProjectionMatrixFOV(fov, resolution[0]/resolution[1], clip[0], clip[1])
+    def connect_camera(self, name: str, link: str, resolution: tuple = (1280, 1024), clip: tuple = (0.001, 5.0), intrinsic_matrix: np.ndarray = None):
+        if intrinsic_matrix is None:
+            default_fov_x = resolution[0]/2.0*1.2
+            default_fov_y = resolution[1]/2.0*1.2
+            default_cx = resolution[0]/2
+            default_cy = resolution[1]/2
+            intrinsic_matrix = np.array([[default_fov_x,           0 , default_cx],
+                                        [0,            default_fov_y , default_cy],
+                                        [0,                        0 ,         1 ]])
 
+        projection_matrix = converters.intrinsic2GLprojection_matrix(intrinsic_matrix)
         self.__cameras[name] = {
-            'proj_matrix': proj_matrix,
+            'projection_matrix': projection_matrix,
             'link': link,
             'resolution': resolution
         }
@@ -104,6 +116,61 @@ class PyBulletRobot(robot.Robot):
             raise SimulationException('Robot was not initialized')
         assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
         
+        # camera view_matrix:
+        
+        view_matrix = converters.extrinsicGLview_matrix(self.ee_state(self.__cameras['camera_name'], "world").tf.A)
+
+        color, depth, segmask = self.__p.getCameraImage(
+            width=self.__cameras[camera_name]['resolution'][1],
+            height=self.__cameras[camera_name]['resolution'][0],
+            viewMatrix=view_matrix,
+            projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
+            renderer=p.ER_BULLET_HARDWARE_OPENGL,
+            flags=p.ER_NO_SEGMENTATION_MASK
+        )[2:5]
+        output = [
+            np.reshape(color, 
+                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., :3],
+            np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
+        ]
+
+        return output
+
+    def get_point_cloud(self, camera_name: str):
+        if not self.__initialized:
+            raise SimulationException('Robot was not initialized')
+        assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
+        
+        # based on https://stackoverflow.com/questions/59128880/getting-world-coordinates-from-opengl-depth-buffer
+
+        # get a depth image
+        # "infinite" depths will have a value close to 1
+        image_arr = pb.getCameraImage(width=width, height=height, viewMatrix=view_matrix, projectionMatrix=proj_matrix)
+        depth = image_arr[3]
+
+        # create a 4x4 transform matrix that goes from pixel coordinates (and depth values) to world coordinates
+        proj_matrix = np.asarray(proj_matrix).reshape([4, 4], order="F")
+        view_matrix = np.asarray(view_matrix).reshape([4, 4], order="F")
+        tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, view_matrix))
+
+        # create a grid with pixel coordinates and depth values
+        y, x = np.mgrid[-1:1:2 / height, -1:1:2 / width]
+        y *= -1.
+        x, y, z = x.reshape(-1), y.reshape(-1), depth.reshape(-1)
+        h = np.ones_like(z)
+
+        pixels = np.stack([x, y, z, h], axis=1)
+        # filter out "infinite" depths
+        pixels = pixels[z < 0.99]
+        pixels[:, 2] = 2 * pixels[:, 2] - 1
+
+        # turn pixels to world coordinates
+        points = np.matmul(tran_pix_world, pixels.T).T
+        points /= points[:, 3: 4]
+        points = points[:, :3]
+
+        return points
+    
         # camera pose
         cam_pos, cam_rot = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[self.__cameras[camera_name]['link']], computeForwardKinematics=1)[4:6]
         cam_rot = np.array(self.__p.getMatrixFromQuaternion(cam_rot)).reshape(3, 3)
@@ -377,10 +444,15 @@ class PyBulletRobot(robot.Robot):
         self.__base_orient = R.from_matrix(self._base_transform.R).as_quat().tolist() # Quaternioun [x,y,z,w]
         # print("Loading urdf ", self._urdf_filename)
 
+        if self.__use_self_collision:
+            flags_bullet = self.__p.URDF_USE_SELF_COLLISION
+
         self.__robot_id = self.__p.loadURDF(
             self._urdf_filename,
             basePosition=self.__base_pose,
             baseOrientation=self.__base_orient,
+            useFixedBase=True,
+            flags=flags_bullet
             useFixedBase=self.__fixed_base,
             flags=self.__load_flags
         )

@@ -239,5 +239,3 @@ class PyBulletWorld():
     @property
     def client(self) -> float:
         return self.__p
-
-    
