@@ -221,10 +221,10 @@ class EEState:
 
     Args:
         ee_link (str): name of end effector link in urdf
-        ref_frame (str, optional): name of base link in urdf. Defaults to "world".
+        ref_frame (str, optional): name of base link in urdf. Defaults to 'global'.
     """
 
-    def __init__(self, ee_link: str, ref_frame: str = "world"):
+    def __init__(self, ee_link: str, ref_frame: str = 'global'):
         self.__ee_link = ee_link
         self.__ref_frame = ref_frame
         self.__tf = SE3()
@@ -239,19 +239,19 @@ class EEState:
         return out
 
     def __eq__(self, __es: EEState) -> bool:
-        return np.allclose(self.__tf.A, __es.tf.A, atol=1e-5) and np.allclose(self.__twist, __es.twist, atol=1e-5)
+        return np.allclose(self.__tf.A, __es.tf.A, atol=1e-4) and np.allclose(self.__twist, __es.twist, atol=1e-4)
 
     def copy(self) -> EEState:
         return
 
     @staticmethod
-    def from_force_torque(force_torque: np.ndarray, ee_link: str, ref_link: str = "world") -> EEState:
+    def from_force_torque(force_torque: np.ndarray, ee_link: str, ref_link: str = 'global') -> EEState:
         """End Effector State
 
         Args:
             force_torque (np.ndarray): force and torque
             ee_link (str): name of end effector link in urdf
-            ref_link (str, optional): name of base link in urdf. Defaults to "world".
+            ref_link (str, optional): name of base link in urdf. Defaults to 'global'.
 
         Returns:
             EEState: End Effector State
@@ -261,13 +261,13 @@ class EEState:
         return es
 
     @staticmethod
-    def from_twist(twist: np.ndarray, ee_link: str, ref_link: str = "world") -> EEState:
+    def from_twist(twist: np.ndarray, ee_link: str, ref_link: str = 'global') -> EEState:
         """_summary_
 
         Args:
             twist (np.ndarray): linear and angular speeds
             ee_link (str): name of end effector link in urdf
-            ref_link (str, optional): name of base link in urdf. Defaults to "world".
+            ref_link (str, optional): name of base link in urdf. Defaults to 'global'.
 
         Returns:
             EEState: End Effector State
@@ -277,13 +277,13 @@ class EEState:
         return es
 
     @staticmethod
-    def from_tf(tf: SE3, ee_link: str, ref_link: str = "world") -> EEState:
+    def from_tf(tf: SE3, ee_link: str, ref_link: str = 'global') -> EEState:
         """_summary_
 
         Args:
             tf (SE3): transformation
             ee_link (str): name of end effector link in urdf
-            ref_link (str, optional): name of base link in urdf. Defaults to "world".
+            ref_link (str, optional): name of base link in urdf. Defaults to 'global'.
 
         Returns:
             EEState: End Effector State
@@ -500,12 +500,12 @@ class Robot(ABC):
     def num_joints(self) -> int:
         return self._joint_state.num_joints
 
-    def ee_state(self, ee_link: str, ref_frame: str = "world") -> EEState:
+    def ee_state(self, ee_link: str, ref_frame: str = 'global') -> EEState:
         """EE state of robot
 
         Args:
             ee_link (str): name of end effector link in urdf
-            ref_link (str, optional): name of base link in urdf. Defaults to "world".
+            ref_link (str, optional): name of base link in urdf. Defaults to 'global'.
 
         Returns:
             EEState: _description_

@@ -16,6 +16,7 @@ from scipy.spatial.transform import Rotation as R
 
 from itmobotics_sim.utils import robot
 from itmobotics_sim.utils import math
+
 from itmobotics_sim.pybullet_env.urdf_editor import URDFEditor
 
 
@@ -23,11 +24,14 @@ class SimulationException(Exception):
     pass
 
 class PyBulletRobot(robot.Robot):
-    def __init__(self, pybullet_client: bc.BulletClient,
+    def __init__(self, 
+        pybullet_client: bc.BulletClient,
         urdf_filename: str,
         base_transform: SE3 = SE3(),
         joint_controller_params: dict = None,
-        use_self_collision = True
+        use_self_collision = True,
+        additional_path: list[str] = [],
+        fixed_base: bool = True
     ):
         super().__init__(urdf_filename, base_transform)
         self.__p = pybullet_client
@@ -39,19 +43,21 @@ class PyBulletRobot(robot.Robot):
         self.__num_actuators = 0
         self.__joint_id_for_link = {}
 
+        self.__additional_path = additional_path
         self.__external_models = {}
         self.__tool_list = []
         self.__cameras = {}
 
         self.__use_self_collision = use_self_collision
+        self.__fixed_base = fixed_base
 
         self.__joint_limits: robot.JointLimits = None
-        print(self.__p)
+        # print(self.__p)
         self.reset()
 
         self.__joint_controller_params = {
-            'kp': self.__joint_limits.limit_torques[1]/10,
-            'kd': self.__joint_limits.limit_torques[1]/10,
+            'kp': self.__joint_limits.limit_torques[1]/10.0,
+            'kd': self.__joint_limits.limit_torques[1]/10.0,
             'max_torque': self.__joint_limits.limit_torques[1]
         }
         if joint_controller_params:
@@ -65,13 +71,14 @@ class PyBulletRobot(robot.Robot):
     def connect_tool(self, tool_name: str, external_urdf_filename: str, root_link: str, tf: SE3 = SE3(), save = False):
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
-        
-        main_editor = URDFEditor(self._urdf_filename)
-        child_editor = URDFEditor(external_urdf_filename)
 
+        main_editor = URDFEditor(self._urdf_filename, self.__additional_path)
+        child_editor = URDFEditor(external_urdf_filename, self.__additional_path)
+        self._urdf_filename = main_editor.urdf_filename
+        
         main_editor.joinURDF(child_editor, root_link, tf.A)
 
-        head = os.path.split(external_urdf_filename)[0]
+        head = os.path.split(self._urdf_filename)[0]
         newname = str(uuid.uuid4()) + '_tmp'+ '.urdf'
         newpath = os.path.join(head, newname)
         self._urdf_filename = newpath
@@ -85,84 +92,6 @@ class PyBulletRobot(robot.Robot):
         self.reset()
         self.reset_joint_state(jj)
         self.__reset_tools()
-    
-    def connect_camera(self, name: str, link: str, resolution: tuple = (1280, 1024), fov: float = 1000.0, clip: tuple = (0.001, 5.0)):
-        proj_matrix = self.__p.computeProjectionMatrixFOV(fov, resolution[0]/resolution[1], clip[0], clip[1])
-
-        self.__cameras[name] = {
-            'proj_matrix': proj_matrix,
-            'link': link,
-            'resolution': resolution
-        }
-
-    def get_image(self, camera_name: str):
-        if not self.__initialized:
-            raise SimulationException('Robot was not initialized')
-        assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
-        
-        viewMat = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name]["link"], "world").tf.A)
-
-        color, depth, segmask = self.__p.getCameraImage(
-            width=self.__cameras[camera_name]['resolution'][1],
-            height=self.__cameras[camera_name]['resolution'][0],
-            viewMatrix=viewMat,
-            projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
-            renderer=p.ER_BULLET_HARDWARE_OPENGL,
-            flags=p.ER_NO_SEGMENTATION_MASK
-        )[2:5]
-        output = [
-            np.reshape(color, 
-                (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1], 4))[..., -2::-1],
-            np.reshape(depth, (self.__cameras[camera_name]['resolution'][0], self.__cameras[camera_name]['resolution'][1]))
-        ]
-
-        return output
-
-    def get_point_cloud(self, camera_name: str):
-        if not self.__initialized:
-            raise SimulationException('Robot was not initialized')
-        assert camera_name in self.__cameras, SimulationException('Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name))
-        
-        viewMat = math.extrinsicGLview_matrix(self.ee_state(self.__cameras[camera_name]["link"], "world").tf.A)
-
-        depth = self.__p.getCameraImage(
-            width=self.__cameras[camera_name]['resolution'][1],
-            height=self.__cameras[camera_name]['resolution'][0],
-            viewMatrix=viewMat,
-            projectionMatrix=self.__cameras[camera_name]['proj_matrix'],
-            renderer=p.ER_BULLET_HARDWARE_OPENGL,
-            flags=p.ER_NO_SEGMENTATION_MASK
-        )[3]
-
-
-        # view_matrix = np.asarray(viewMat).reshape([4, 4], order="F")
-        Tc = np.array([[1,   0,    0,  0],
-                    [0,  -1,    0,  0],
-                    [0,   0,   -1,  0],
-                    [0,   0,    0,  1]]).reshape(4,4)
-
-        proj_matrix = np.asarray(self.__cameras[camera_name]['proj_matrix']).reshape([4, 4], order="F")        
-        tran_pix_world = np.linalg.inv(np.matmul(proj_matrix, Tc))
-
-        # create a grid with pixel coordinates and depth values
-        width=self.__cameras[camera_name]['resolution'][1]
-        height=self.__cameras[camera_name]['resolution'][0]
-        y, x = np.mgrid[-1:1:2 / height, -1:1:2 / width]
-        y *= -1.
-        x, y, z = x.reshape(-1), y.reshape(-1), depth.reshape(-1)
-        h = np.ones_like(z)
-
-        pixels = np.stack([x, y, z, h], axis=1)
-        # filter out "infinite" depths
-        pixels = pixels[z < 0.998]
-        pixels[:, 2] = 2 * pixels[:, 2] - 1
-
-        # turn pixels to world coordinates
-        points = np.matmul(tran_pix_world, pixels.T).T
-        points /= points[:, 3: 4]
-        points = points[:, :3]
-
-        return points
     
     def remove_tool(self, tool_name):
         if not self.__initialized:
@@ -201,65 +130,90 @@ class PyBulletRobot(robot.Robot):
     def reset_joint_state(self, jstate: robot.JointState):
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
+        assert self._joint_state.num_joints == jstate.num_joints,\
+            "Can not set joint state, because given state has invalid size, expected {}, but given {}".format(
+                self._joint_state.num_joints, jstate.num_joints
+            )
         self._joint_state = jstate
         for i in range(self.__num_actuators):
             self.__p.resetJointState(self.__robot_id, self.__actuators_id_list[i], self._joint_state.joint_positions[i], self._joint_state.joint_velocities[i])
     
-    def reset_ee_state(self, eestate: robot.EEState):
+    def reset_ee_state(self, eestate: robot.EEState, initial_state: robot.JointState = None) -> bool:
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
         ref_frame = eestate.ref_frame
         base_ee_state = copy.deepcopy(eestate)
-        if ref_frame!='world':
-            refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[ref_frame])
+        if ref_frame!='global':
+            refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[ref_frame], computeForwardKinematics=1)
             _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
             in_base_tf =  SE3(*ref_frame_pos)@ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))
             base_ee_state.tf = in_base_tf @ base_ee_state.tf
             base_ee_state.twist = np.kron(np.eye(2,dtype=int), in_base_tf.R) @ base_ee_state.twist
 
-         # In PyBullet quaternioun described as xyzw, but in spatialmath wxyz
         position = tuple(base_ee_state.tf.t)
         orientation = tuple(r2q(base_ee_state.tf.R,order='xyzs'))
-
         js = robot.JointState(self.__num_actuators)
-        js.joint_positions = np.array(list(
-            self.__p.calculateInverseKinematics(
-                self.__robot_id, self.__joint_id_for_link[eestate.ee_link],
-                position,
-                orientation,
-                maxNumIterations=1000,
-                residualThreshold=1e-6,
-                restPoses = list(self._joint_state.joint_positions),
-                lowerLimits = list(self.joint_limits.limit_positions[0]),
-                upperLimits = list(self.joint_limits.limit_positions[1])
+        self._update_joint_state(js)
+        new_proposed_q = np.zeros(js.joint_positions.shape)
+        limit_range = self.joint_limits.limit_positions[1]-self.joint_limits.limit_positions[0]
+        if initial_state is None:
+            initial_state = robot.JointState.from_position(new_proposed_q)
+        self.reset_joint_state(initial_state)
+        new_proposed_q = np.array(
+            list(
+                self.__p.calculateInverseKinematics(
+                    self.__robot_id, self.__joint_id_for_link[eestate.ee_link],
+                    position,
+                    orientation,
+                    maxNumIterations=10000,
+                    residualThreshold=1e-6,
+                    restPoses = list(initial_state.joint_positions),
+                    lowerLimits = list(self.joint_limits.limit_positions[0]),
+                    upperLimits = list(self.joint_limits.limit_positions[1])
+                )
             )
-        ))
+        )
+        
+        for i in range(new_proposed_q.shape[0]):
+            if new_proposed_q[i]<self.joint_limits.limit_positions[0][i]:
+                new_proposed_q[i] =  new_proposed_q[i]+ np.pi*2
+            elif new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
+                new_proposed_q[i] =  new_proposed_q[i]- np.pi*2
+            else:
+                new_proposed_q[i] =  new_proposed_q[i]
+            if new_proposed_q[i]<self.joint_limits.limit_positions[0][i] or new_proposed_q[i]>self.joint_limits.limit_positions[1][i]:
+                return False
+
+        js.joint_positions = new_proposed_q
         js.joint_velocities = np.linalg.pinv(self.jacobian(js.joint_positions, eestate.ee_link, eestate.ref_frame)) @ base_ee_state.twist
         self.reset_joint_state(js)
         self._update_joint_state(js)
+        return True
 
 
-    def jacobian(self, joint_pose: np.ndarray, ee_link: str, ref_frame: str) -> np.ndarray:
+    def jacobian(self, joint_pose: np.ndarray, ee_link: str, ref_frame: str ='global') -> np.ndarray:
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
         Jv = np.zeros((3, len(joint_pose)))
         Jw = np.zeros((3, len(joint_pose)))
-        if ee_link!='world':
+        if ee_link!='global':
             # Please call self.__p.stepSimulation before using self.__p.calculateJacobian.
             jac_t, jac_r = self.__p.calculateJacobian(
                 self.__robot_id, self.__joint_id_for_link[ee_link], [0,0,0],
                 list(joint_pose), list(np.zeros(joint_pose.shape)),
                 list(np.zeros(joint_pose.shape))
             )
-            Jv = np.asarray(jac_t)
-            Jw = np.asarray(jac_r)
-                
-        if ref_frame!='world':
-            refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[ref_frame])
+            Jv = np.asarray(jac_t)[:, -self.__num_actuators:]
+            Jw = np.asarray(jac_r)[:, -self.__num_actuators:]
+        if ref_frame =='global':
+            Jv = self._base_transform.R @ Jv
+            Jw = self._base_transform.R @ Jw
+        else:
+            refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[ref_frame], computeForwardKinematics=1)
             _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
-            rot_matrix =  SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False).A
-            Jv = rot_matrix.T @ Jv
-            Jw = rot_matrix.T @ Jw
+            in_base_tf =  SE3(*ref_frame_pos)@ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))
+            Jv = in_base_tf.R.T @ Jv
+            Jw = in_base_tf.R.T @ Jw
 
         J = np.concatenate((Jv,Jw), axis=0)
         return J
@@ -318,8 +272,8 @@ class PyBulletRobot(robot.Robot):
         # print(p.getNumJoints(self.__robot_id))
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
-        if tool_state.ee_link!='world':
-            eeState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link], computeLinkVelocity=1)
+        if tool_state.ee_link!='global':
+            eeState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link], computeLinkVelocity=1, computeForwardKinematics=1)
             _,_,_,_, link_frame_pos, link_frame_rot, link_frame_pos_vel, link_frame_rot_vel = eeState
         else:
             link_frame_pos = np.zeros(3)
@@ -331,8 +285,8 @@ class PyBulletRobot(robot.Robot):
         pb_joint_state = self.__p.getJointState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link])
         tool_state.force_torque = np.array(pb_joint_state[2])
 
-        if tool_state.ref_frame != 'world':
-            refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ref_frame], computeLinkVelocity=1)
+        if tool_state.ref_frame != 'global':
+            refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ref_frame], computeLinkVelocity=1, computeForwardKinematics=1)
             _,_,_,_, ref_frame_pos, ref_frame_rot, ref_frame_pos_vel, ref_frame_rot_vel  = refFrameState
             ref_frame_twist = np.concatenate([ref_frame_pos_vel, ref_frame_rot_vel])
 
@@ -366,7 +320,7 @@ class PyBulletRobot(robot.Robot):
 
         self.__base_pose = self._base_transform.t.tolist() # World position [x,y,z]
         self.__base_orient = R.from_matrix(self._base_transform.R).as_quat().tolist() # Quaternioun [x,y,z,w]
-        print("Loading urdf ", self._urdf_filename)
+        # print("Loading urdf ", self._urdf_filename)
 
         if self.__use_self_collision:
             flags_bullet = self.__p.URDF_USE_SELF_COLLISION
@@ -375,8 +329,8 @@ class PyBulletRobot(robot.Robot):
             self._urdf_filename,
             basePosition=self.__base_pose,
             baseOrientation=self.__base_orient,
-            useFixedBase=True,
-            flags=flags_bullet
+            flags=flags_bullet,
+            useFixedBase=self.__fixed_base,
         )
         self.__joint_id_for_link = {}
         self.__actuators_name_list = []
@@ -387,7 +341,7 @@ class PyBulletRobot(robot.Robot):
         for _id in range(self.__p.getNumJoints(self.__robot_id)):
             # print(p.getJointInfo(self.__robot_id, _id))
             joint_info = self.__p.getJointInfo(self.__robot_id, _id)
-            print(joint_info)
+            # print(joint_info)
             _name = joint_info[12].decode('UTF-8')
             if joint_info[4] != -1:
                 self.__actuators_name_list.append(_name)
@@ -439,6 +393,10 @@ class PyBulletRobot(robot.Robot):
     @property
     def joint_limits(self) -> robot.JointLimits:
         return self.__joint_limits
+    
+    @property
+    def urdf_filename(self) -> str:
+        return self._urdf_filename
     
     def link_id(self, link_name: str) -> int:
         return self.__joint_id_for_link[link_name]

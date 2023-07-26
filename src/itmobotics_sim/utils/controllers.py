@@ -204,6 +204,43 @@ class EEVelocityToJointVelocityController(ExternalController):
         return True
 
 
+class EELocalVelocityToJointVelocityController(ExternalController):
+    """_summary_
+
+    Args:
+            robot (Robot): _description_
+    """
+
+    def __init__(self, robot: Robot):
+        super().__init__(robot, RobotControllerType.JOINT_VELOCITIES)
+
+    def calc_control(self, target_motion: Motion) -> bool:
+        """_summary_
+
+        Args:
+            target_motion (Motion): _description_
+
+        Returns:
+            bool: _description_
+        """
+        target_motion.ee_state.twist = np.kron(np.eye(2),
+            self.robot.ee_state(
+                target_motion.ee_state.ee_link,
+                target_motion.ee_state.ref_frame
+            ).tf.R.T) @ target_motion.ee_state.twist
+
+        target_motion.joint_state.joint_velocities = (
+            np.linalg.pinv(
+                self.robot.jacobian(
+                    self.robot.joint_state.joint_positions,
+                    target_motion.ee_state.ee_link,
+                    target_motion.ee_state.ref_frame,
+                )
+            )
+            @ target_motion.ee_state.twist
+        )
+        return True
+
 class JointTorquesController(SimpleController):
     """_summary_
 
@@ -274,10 +311,10 @@ class EEForceHybrideToEEVelocityController(ExternalController):
             robot (Robot): _description_
             selected_axis (np.ndarray): _description_
             stiffnes (np.ndarray): _description_
-            ref_basis (str, optional): _description_. Defaults to 'world'.
+            ref_basis (str, optional): _description_. Defaults to 'global'.
     """
 
-    def __init__(self, robot: Robot, selected_axis: np.ndarray, stiffnes: np.ndarray, ref_basis: str = "world"):
+    def __init__(self, robot: Robot, selected_axis: np.ndarray, stiffnes: np.ndarray, ref_basis: str = "global"):
         super().__init__(robot, RobotControllerType.TWIST)
         self.__pid = MPIDController(10 * np.identity(6), 1e-4 * np.identity(6), 1e-1 * np.identity(6), 1e-3)
         self.__ref_basis = ref_basis

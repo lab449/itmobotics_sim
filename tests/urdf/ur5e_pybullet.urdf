@@ -343,9 +343,9 @@
     <parent link="wrist_3_link"/>
     <child link="tool0"/>
   </joint>
-  <link name="world"/>
+  <link name="bworld"/>
   <joint name="world_joint" type="fixed">
-    <parent link="world"/>
+    <parent link="bworld"/>
     <child link="base"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.0 0.0 0.0"/>
   </joint>
@@ -371,6 +371,6 @@
   <joint name="camera_link_joint" type="fixed">
     <parent link="tool0"/>
     <child link="camera_link"/>
-    <origin rpy="-0.2 0 0.0" xyz=" 0.00 -0.00 0.1"/>
+    <origin rpy="0.0 0 0.0" xyz=" 0.00 -0.00 0.1"/>
   </joint>
 </robot>
