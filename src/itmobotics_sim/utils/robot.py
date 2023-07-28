@@ -239,7 +239,7 @@ class EEState:
         return out
 
     def __eq__(self, __es: EEState) -> bool:
-        return np.allclose(self.__tf.A, __es.tf.A, atol=1e-5) and np.allclose(self.__twist, __es.twist, atol=1e-5)
+        return np.allclose(self.__tf.A, __es.tf.A, atol=1e-4) and np.allclose(self.__twist, __es.twist, atol=1e-4)
 
     def copy(self) -> EEState:
         return

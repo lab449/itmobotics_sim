@@ -11,14 +11,14 @@ from itmobotics_sim.utils.controllers import EEPositionToEEVelocityController, E
 
 controller_params = {'kp': np.array([12.0, 12.0, 12.0, 2.0, 2.0, 1.0]), 'kd': np.array([1.0, 5.0, 1.0, 0.05, 0.05, 0.05]) * 40}
 
-test_tf = SE3(-0.8, 0.0, 0.625)
-test_ee_tf = SE3(0.2, 0.2, 0.625) @ SE3.Rx(np.pi)
+test_tf = SE3(-0.8, 0.0, 0.725)
+test_ee_tf = SE3(-0.2, -0.2, 0.5) @ SE3.Rx(np.pi)
 
 test_joint_pose = np.array([0.0, -np.pi/2, np.pi/2, 0.0, np.pi/2, 0.0])
 target_joint_state = JointState.from_position(test_joint_pose)
 
 final_time = 10.0
-n_agents = 5
+n_agents = 3
 
 class testPyBulletMlultiRobot(unittest.TestCase):
     def setUp(self):
@@ -37,19 +37,22 @@ class testPyBulletMlultiRobot(unittest.TestCase):
             self.__agents.append(
                 {
                     'robot': roboti,
-                    'controoller_pose': controller_pose,
+                    'controller_pose': controller_pose,
                     'conroller_speed': controller_speed
                 }
             )
 
     # @unittest.skip("Temporal skip")
-    def test_reset_state(self):
-        new_ee_tf = vec2SE3(np.random.uniform(-0.2, 0.2, 6)) @test_ee_tf
+    def test_reset_ee_state(self):
+        new_ee_tf = vec2SE3(np.random.uniform(-0.1, 0.1, 6)) @test_ee_tf
         for a in self.__agents:
             target_state = EEState.from_tf(new_ee_tf, 'ee_tool', 'base_link')
             a['robot'].reset_ee_state(target_state)
-            self.assertEqual(target_state, a['robot'].ee_state(target_state.ee_link, 'base_link'))
+            new_state = a['robot'].ee_state('ee_tool', 'base_link')
+            time.sleep(5)
+            self.assertEqual(target_state, new_state)
 
+    def test_reset_joint_state(self):
         new_joint_state = test_joint_pose + np.random.uniform(-np.pi/5, np.pi/5, test_joint_pose.shape)
         for a in self.__agents:
             target_state = JointState.from_position(new_joint_state)

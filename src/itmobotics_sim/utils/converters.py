@@ -1,3 +1,5 @@
+import numpy as np
+
 def intrinsic2GLprojection_matrix(intrinsic_matrix: np.ndarray, resolution: np.ndarray, clip: np.ndarray) -> np.ndarray:
     """intrinsic to GL projection matrix
     
