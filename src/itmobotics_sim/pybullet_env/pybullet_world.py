@@ -137,33 +137,30 @@ class PyBulletWorld():
         return self.__cameras[camera_name]['last_frame']
 
     def get_point_cloud(self, camera_name: str) -> np.ndarray:
-        if not self.__initialized:
-            raise SimulationException('Robot was not initialized')
-        assert camera_name in self.__cameras, SimulationException(
-            'Camera {:s} is not connected, please use connect_camera() before that!'. format(camera_name)
-        )
+        self.get_image(camera_name)
         
         view_matrix = converters.extrinsic2GLview_matrix(
             self.link_state(self.__cameras[camera_name]["model"],self.__cameras[camera_name]["link"]).tf.A
         )
 
-        depth = self.__p.getCameraImage(
-            width=self.__cameras[camera_name]['resolution'][0],
-            height=self.__cameras[camera_name]['resolution'][1],
-            viewMatrix=view_matrix,
-            projectionMatrix=converters.intrinsic2GLprojection_matrix(self.__cameras[camera_name]['intrinsic_matrix']),
-            renderer=p.ER_TINY_RENDERER,
-            flags=p.ER_NO_SEGMENTATION_MASK
-        )[3]
-
+        depth = self.__cameras[camera_name]['last_frame'][1]
         proj_matrix = np.asarray(
-            converters.intrinsic2GLprojection_matrix(self.__cameras[camera_name]['intrinsic_matrix'])
+            converters.intrinsic2GLprojection_matrix(
+                self.__cameras[camera_name]['intrinsic_matrix'],
+                self.__cameras[camera_name]['resolution'],
+                self.__cameras[camera_name]['clip']
+            )
         ).reshape([4, 4], order="F")
-        tran_pix_camera = np.linalg.pinv(proj_matrix)
+        Tc = np.array([[1,   0,    0,  0],
+                    [0,  -1,    0,  0],
+                    [0,   0,   -1,  0],
+                    [0,   0,    0,  1]]).reshape(4,4)
+
+        tran_pix_camera = np.linalg.pinv(np.matmul(proj_matrix, Tc))
 
         # create a grid with pixel coordinates and depth values
-        width=self.__cameras[camera_name]['resolution'][0]
-        height=self.__cameras[camera_name]['resolution'][1]
+        width = self.__cameras[camera_name]['resolution'][0]
+        height = self.__cameras[camera_name]['resolution'][1]
         y, x = np.mgrid[-1:1:2 / height, -1:1:2 / width]
         y *= -1.
         x, y, z = x.reshape(-1), y.reshape(-1), depth.reshape(-1)

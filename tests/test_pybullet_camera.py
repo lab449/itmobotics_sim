@@ -57,6 +57,43 @@ class testPyBulletSim(unittest.TestCase):
     
         self.assertTrue(np.sum(np.logical_and(lg <= img[650, 550], img[650, 550] <= ug).astype(int)))
 
+    @unittest.skip("Temporal skip")
+    def test_point_cloud(self):
+        self.__sim.reset()
+        self.__sim.connect_camera('eyehand_cam_depth', 'robot', CAMERA_LINK_NAME, resolution=(480, 320))
+        self.__robot.reset_joint_state(target_joint_state)
+        while self.__sim.sim_time<5.0:
+            self.__controller_ee_pose.send_control_to_robot(target_motion)
+            self.__sim.sim_step()
+        img, _ = self.__sim.get_image('eyehand_cam_depth')
+        pc = self.__sim.get_point_cloud('eyehand_cam_depth')
+        self.assertEqual(pc.shape[1], 3)
+        self.assertEqual(pc.shape[0], img.shape[0]*img.shape[1])
+        x = pc[:, 0]
+        y = pc[:, 1]
+        z = pc[:, 2]
+
+        import matplotlib
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D
+        matplotlib.use('TKAgg')
+
+        # Create a 3D figure
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # Plot the point cloud data
+        ax.scatter(x, y, z, s=1)
+
+        # Set the axis labels
+        ax.set_xlabel('X Label')
+        ax.set_ylabel('Y Label')
+        ax.set_zlabel('Z Label')
+
+        # Show the plot
+        plt.show()
+
+
 
 def main():
     unittest.main(exit=False)
