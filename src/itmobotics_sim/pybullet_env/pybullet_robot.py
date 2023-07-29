@@ -25,8 +25,8 @@ class SimulationException(Exception):
 
 class PyBulletRobot(robot.Robot):
     def __init__(self, 
-        pybullet_client: bc.BulletClient = None,
         urdf_filename: str,
+        pybullet_client: bc.BulletClient = None,
         base_transform: SE3 = SE3(),
         joint_controller_params: dict = None,
         use_self_collision = True,

@@ -57,8 +57,8 @@ class PyBulletWorld():
         if name in self.__robots.keys():
             raise SimulationException('A robot with that name ({:s}) already exists'.format(name))
         self.__robots[name] = PyBulletRobot(
-            self.__p,
             urdf_filename,
+            self.__p,
             base_transform,
             additional_path = self.additional_paths,
             fixed_base=fixed,
