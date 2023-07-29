@@ -11,7 +11,7 @@ DOCS_REQUIRE = [
 
 setuptools.setup(
     name='itmobotics_sim',
-    version='0.0.6',
+    version='0.0.7',
     author='TexnoMann',
     author_email='texnoman@itmo.ru',
     description='Package with pybullet robots simulation',
