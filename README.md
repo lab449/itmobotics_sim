@@ -4,10 +4,9 @@ IT's MOre than a roBOTICS SIMulator - The framework for simulating open loop kin
 ![itmobotics_sim](assets/sim.png)
 
 ## Installation
-For installing package run standart setup.py file:
+For installing package run in package directory:
 ```bash
-    python3 setup.py sdist
-    python3 setup.py install
+    pip3 install .
 ```
 
 Installation completed if pip show your package:
