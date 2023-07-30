@@ -36,7 +36,7 @@ class PyBulletRobot(robot.Robot):
         super().__init__(urdf_filename, base_transform)
         self.__p = pybullet_client
         if self.__p is None:
-            self.__p = bc.BulletClient(connection_mode=self.__pybullet_gui_mode)
+            self.__p = bc.BulletClient(connection_mode=p.DIRECT)
         self.__base_urdf_filename = urdf_filename
         self.__robot_id = None
         self.__initialized = False
@@ -198,7 +198,8 @@ class PyBulletRobot(robot.Robot):
             raise SimulationException('Robot was not initialized')
         Jv = np.zeros((3, len(joint_pose)))
         Jw = np.zeros((3, len(joint_pose)))
-        if ee_link!='global':
+
+        if ee_link!='global' and ee_link!=self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
             # Please call self.__p.stepSimulation before using self.__p.calculateJacobian.
             jac_t, jac_r = self.__p.calculateJacobian(
                 self.__robot_id, self.__joint_id_for_link[ee_link], [0,0,0],
@@ -207,10 +208,14 @@ class PyBulletRobot(robot.Robot):
             )
             Jv = np.asarray(jac_t)[:, -self.__num_actuators:]
             Jw = np.asarray(jac_r)[:, -self.__num_actuators:]
+
         if ref_frame =='global':
             Jv = self._base_transform.R @ Jv
             Jw = self._base_transform.R @ Jw
+        elif ref_frame==self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
+            pass
         else:
+            # print(self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'))
             refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[ref_frame], computeForwardKinematics=1)
             _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
             in_base_tf =  SE3(*ref_frame_pos)@ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))
@@ -274,12 +279,13 @@ class PyBulletRobot(robot.Robot):
         # print(p.getNumJoints(self.__robot_id))
         if not self.__initialized:
             raise SimulationException('Robot was not initialized')
-        if tool_state.ee_link!='global':
+
+        link_frame_pos = np.zeros(3)
+        link_frame_rot = np.array([0,0,0,1])
+
+        if tool_state.ee_link!='global' and tool_state.ee_link!=self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
             eeState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link], computeLinkVelocity=1, computeForwardKinematics=1)
             _,_,_,_, link_frame_pos, link_frame_rot, link_frame_pos_vel, link_frame_rot_vel = eeState
-        else:
-            link_frame_pos = np.zeros(3)
-            link_frame_rot = np.array([0,0,0,1])
         
         tool_state.tf = SE3(*link_frame_pos) @ SE3(SO3(R.from_quat(link_frame_rot).as_matrix(), check=False))
         tool_state.twist = np.concatenate([link_frame_pos_vel, link_frame_rot_vel])
@@ -287,7 +293,13 @@ class PyBulletRobot(robot.Robot):
         pb_joint_state = self.__p.getJointState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link])
         tool_state.force_torque = np.array(pb_joint_state[2])
 
-        if tool_state.ref_frame != 'global':
+        if tool_state.ref_frame == self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
+            reference_tf = self._base_transform
+            tool_state.tf = (reference_tf).inv() @ tool_state.tf
+            rotation_6d = np.kron(np.eye(2,dtype=int), R.from_quat(ref_frame_rot).inv().as_matrix())
+            tool_state.twist = rotation_6d @ (tool_state.twist - ref_frame_twist)
+            
+        elif tool_state.ref_frame != 'global':
             refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ref_frame], computeLinkVelocity=1, computeForwardKinematics=1)
             _,_,_,_, ref_frame_pos, ref_frame_rot, ref_frame_pos_vel, ref_frame_rot_vel  = refFrameState
             ref_frame_twist = np.concatenate([ref_frame_pos_vel, ref_frame_rot_vel])
@@ -344,6 +356,7 @@ class PyBulletRobot(robot.Robot):
             # print(p.getJointInfo(self.__robot_id, _id))
             joint_info = self.__p.getJointInfo(self.__robot_id, _id)
             # print(joint_info)
+            # print(self.__p.getBodyInfo(self.__robot_id))
             _name = joint_info[12].decode('UTF-8')
             if joint_info[4] != -1:
                 self.__actuators_name_list.append(_name)
