@@ -296,7 +296,7 @@ class PyBulletRobot(robot.Robot):
         if tool_state.ref_frame == self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
             reference_tf = self._base_transform
             tool_state.tf = (reference_tf).inv() @ tool_state.tf
-            rotation_6d = np.kron(np.eye(2,dtype=int), R.from_quat(ref_frame_rot).inv().as_matrix())
+            rotation_6d = np.kron(np.eye(2,dtype=int), reference_tf.R.T)
             tool_state.twist = rotation_6d @ (tool_state.twist - ref_frame_twist)
             
         elif tool_state.ref_frame != 'global':
