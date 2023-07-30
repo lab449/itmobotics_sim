@@ -199,7 +199,7 @@ class PyBulletRobot(robot.Robot):
         Jv = np.zeros((3, len(joint_pose)))
         Jw = np.zeros((3, len(joint_pose)))
 
-        if ee_link!='global' and ee_link!=str(self.__p.getBodyInfo(self.__robot_id)[0]):
+        if ee_link!='global' and ee_link!=self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
             # Please call self.__p.stepSimulation before using self.__p.calculateJacobian.
             jac_t, jac_r = self.__p.calculateJacobian(
                 self.__robot_id, self.__joint_id_for_link[ee_link], [0,0,0],
@@ -212,9 +212,10 @@ class PyBulletRobot(robot.Robot):
         if ref_frame =='global':
             Jv = self._base_transform.R @ Jv
             Jw = self._base_transform.R @ Jw
-        elif ref_frame==str(self.__p.getBodyInfo(self.__robot_id)[0]):
+        elif ref_frame==self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
             pass
         else:
+            # print(self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'))
             refFrameState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[ref_frame], computeForwardKinematics=1)
             _,_,_,_, ref_frame_pos, ref_frame_rot = refFrameState
             in_base_tf =  SE3(*ref_frame_pos)@ SE3(SO3(R.from_quat(ref_frame_rot).as_matrix(), check=False))
@@ -282,7 +283,7 @@ class PyBulletRobot(robot.Robot):
         link_frame_pos = np.zeros(3)
         link_frame_rot = np.array([0,0,0,1])
 
-        if tool_state.ee_link!='global' and tool_state.ee_link!=str(self.__p.getBodyInfo(self.__robot_id)[0]):
+        if tool_state.ee_link!='global' and tool_state.ee_link!=self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
             eeState = self.__p.getLinkState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link], computeLinkVelocity=1, computeForwardKinematics=1)
             _,_,_,_, link_frame_pos, link_frame_rot, link_frame_pos_vel, link_frame_rot_vel = eeState
         
@@ -292,7 +293,7 @@ class PyBulletRobot(robot.Robot):
         pb_joint_state = self.__p.getJointState(self.__robot_id, self.__joint_id_for_link[tool_state.ee_link])
         tool_state.force_torque = np.array(pb_joint_state[2])
 
-        if tool_state.ref_frame == str(self.__p.getBodyInfo(self.__robot_id)[0]):
+        if tool_state.ref_frame == self.__p.getBodyInfo(self.__robot_id)[0].decode('utf-8'):
             reference_tf = self._base_transform
             tool_state.tf = (reference_tf).inv() @ tool_state.tf
             rotation_6d = np.kron(np.eye(2,dtype=int), R.from_quat(ref_frame_rot).inv().as_matrix())
